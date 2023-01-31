@@ -4,9 +4,8 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
-#include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "CommonFramework/Inference/ImageMatchDetector.h"
@@ -33,7 +32,8 @@ StarterReset_Descriptor::StarterReset_Descriptor()
         STRING_POKEMON + " BDSP", "Starter Reset",
         "ComputerControl/blob/master/Wiki/Programs/PokemonBDSP/StarterReset.md",
         "Shiny hunt your starter " + STRING_POKEMON + ".",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -116,7 +116,7 @@ void StarterReset::program(SingleSwitchProgramEnvironment& env, BotBaseContext& 
         env.update_stats();
 
         if (consecutive_failures >= 3){
-            throw OperationFailedException(env.console, "Failed 3 times in the row.");
+            throw OperationFailedException(env.console, "Failed 3 times in the row.", true);
         }
 
         if (reset){

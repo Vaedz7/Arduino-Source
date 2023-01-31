@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/Tools/StatsTracking.h"
 #include "CommonFramework/Tools/VideoResolutionCheck.h"
@@ -27,7 +27,8 @@ EggFetcher_Descriptor::EggFetcher_Descriptor()
         STRING_POKEMON + " SV", "Egg Fetcher",
         "ComputerControl/blob/master/Wiki/Programs/PokemonSV/EggFetcher.md",
         "Automatically fetch eggs from a picnic.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -132,10 +133,10 @@ void EggFetcher::program(SingleSwitchProgramEnvironment& env, BotBaseContext& co
                 break;
             }
         }
-    } catch(OperationFailedException& e){
+    } catch(OperationFailedException&){
         stats.m_errors++;
         env.update_stats();
-        throw e;
+        throw;
     }
 
     env.update_stats();

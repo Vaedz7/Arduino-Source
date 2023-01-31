@@ -5,7 +5,7 @@
  */
 
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
-#include "CommonFramework/VideoPipeline/ThreadUtilizationStats.h"
+#include "CommonFramework/VideoPipeline/Stats/ThreadUtilizationStats.h"
 #include "CommonFramework/InferenceInfra/VisualInferencePivot.h"
 #include "CommonFramework/InferenceInfra/AudioInferencePivot.h"
 #include "ConsoleHandle.h"
@@ -29,7 +29,7 @@ ConsoleHandle::ConsoleHandle(
     size_t index,
     Logger& logger,
 //    ThreadHandle& handle,
-    BotBase& botbase,
+    BotBase* botbase,
     VideoFeed& video,
     VideoOverlay& overlay,
     AudioFeed& audio

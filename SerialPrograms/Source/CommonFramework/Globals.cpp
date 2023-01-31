@@ -12,8 +12,8 @@ namespace PokemonAutomation{
 
 const bool IS_BETA_VERSION = true;
 const int PROGRAM_VERSION_MAJOR = 0;
-const int PROGRAM_VERSION_MINOR = 28;
-const int PROGRAM_VERSION_PATCH = 10;
+const int PROGRAM_VERSION_MINOR = 30;
+const int PROGRAM_VERSION_PATCH = 5;
 
 const std::string PROGRAM_VERSION_BASE =
     "v" + std::to_string(PROGRAM_VERSION_MAJOR) +
@@ -68,6 +68,8 @@ std::string get_training_path(){
 }
 
 
+const std::string SETTINGS_PATH = "UserSettings/";
+const std::string SCREENSHOTS_PATH = "Screenshots/";
 const std::string& RESOURCE_PATH(){
     static std::string path = get_resource_path();
     return path;

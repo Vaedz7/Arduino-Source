@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
@@ -28,7 +28,8 @@ SkipToFullMoon_Descriptor::SkipToFullMoon_Descriptor()
         STRING_POKEMON + " LA", "Skip to Full Moon",
         "ComputerControl/blob/master/Wiki/Programs/PokemonLA/SkipToFullMoon.md",
         "Skip nights until full moon.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -56,7 +57,7 @@ void SkipToFullMoon::program(SingleSwitchProgramEnvironment& env, BotBaseContext
         const auto compatibility = detect_item_compatibility(env.console.video().snapshot());
 
         if (compatibility == ItemCompatibility::NONE){
-            throw OperationFailedException(env.console, "Unable to detect item compatibility.");
+            throw OperationFailedException(env.console, "Unable to detect item compatibility.", true);
         }
 
         if (compatibility == ItemCompatibility::COMPATIBLE){

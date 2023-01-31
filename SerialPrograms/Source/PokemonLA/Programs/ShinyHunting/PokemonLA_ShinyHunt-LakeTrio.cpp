@@ -5,7 +5,7 @@
  */
 
 #include <cmath>
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -34,7 +34,8 @@ ShinyHuntLakeTrio_Descriptor::ShinyHuntLakeTrio_Descriptor()
         STRING_POKEMON + " LA", "Shiny Hunt - Lake Trio",
         "ComputerControl/blob/master/Wiki/Programs/PokemonLA/ShinyHunt-LakeTrio.md",
         "Shiny hunt the lake trio legendaries.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -172,7 +173,7 @@ void ShinyHuntLakeTrio::program(SingleSwitchProgramEnvironment& env, BotBaseCont
                 );
                 consecutive_errors++;
                 if (consecutive_errors >= 3){
-                    throw OperationFailedException(env.console, "Failed to detect an encounter 3 times in the row.");
+                    throw OperationFailedException(env.console, "Failed to detect an encounter 3 times in the row.", true);
                 }
                 continue;
             }

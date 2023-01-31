@@ -7,8 +7,9 @@
 #include <array>
 #include <sstream>
 #include "Common/Cpp/PrettyPrint.h"
-#include "CommonFramework/InferenceInfra/InferenceRoutines.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
+#include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/Tools/StatsTracking.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -19,7 +20,6 @@
 #include "PokemonLA/Inference/Battles/PokemonLA_BattleMenuDetector.h"
 #include "PokemonLA/Inference/PokemonLA_BlackOutDetector.h"
 #include "PokemonLA/Inference/PokemonLA_OverworldDetector.h"
-#include "PokemonLA/Inference/PokemonLA_StatusInfoScreenDetector.h"
 #include "PokemonLA/Inference/Sounds/PokemonLA_ShinySoundDetector.h"
 #include "PokemonLA/Programs/PokemonLA_MountChange.h"
 #include "PokemonLA/Programs/PokemonLA_GameEntry.h"
@@ -40,7 +40,8 @@ BurmyFinder_Descriptor::BurmyFinder_Descriptor()
         STRING_POKEMON + " LA", "Burmy Hunter",
         "ComputerControl/blob/master/Wiki/Programs/PokemonLA/BurmyHunter.md",
         "Check nearby trees for a possible Shiny, Alpha or Alpha Shiny Burmy",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -105,6 +106,7 @@ BurmyFinder::BurmyFinder()
         &SHINY_DETECTED_ENROUTE.NOTIFICATIONS,
         &MATCH_DETECTED_OPTIONS.NOTIFICATIONS,
         &NOTIFICATION_PROGRAM_FINISH,
+        &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
     })
     , SAVE_DEBUG_VIDEO(
@@ -709,7 +711,7 @@ void BurmyFinder::run_iteration(SingleSwitchProgramEnvironment& env, BotBaseCont
             break;
         }
         if (c >= 5){
-            throw OperationFailedException(env.console, "Failed to switch to Pokemon selection after 5 attempts.");
+            throw OperationFailedException(env.console, "Failed to switch to Pokemon selection after 5 attempts.", true);
         }
         env.console.log("Not on Pokemon selection. Attempting to switch to it...", COLOR_ORANGE);
         pbf_press_button(context, BUTTON_X, 20, 230);
@@ -760,7 +762,7 @@ void BurmyFinder::run_iteration(SingleSwitchProgramEnvironment& env, BotBaseCont
             pbf_press_button(context, BUTTON_CAPTURE, 2 * TICKS_PER_SECOND, 2 * TICKS_PER_SECOND);
             context.wait_for_all_requests();
         }
-        throw OperationFailedException(env.console, "Black out.");
+        throw OperationFailedException(env.console, "Black out.", true);
     }
 
     from_professor_return_to_jubilife(env, env.console, context);
@@ -780,8 +782,10 @@ void BurmyFinder::program(SingleSwitchProgramEnvironment& env, BotBaseContext& c
         send_program_status_notification(env, NOTIFICATION_STATUS);
         try{
             run_iteration(env, context, counters);
-        }catch (OperationFailedException&){
+        }catch (OperationFailedException& e){
             stats.errors++;
+            e.send_notification(env, NOTIFICATION_ERROR_RECOVERABLE);
+
             pbf_press_button(context, BUTTON_HOME, 20, GameSettings::instance().GAME_TO_HOME_DELAY);
             reset_game_from_home(env, env.console, context, ConsoleSettings::instance().TOLERATE_SYSTEM_UPDATE_MENU_FAST);
         }

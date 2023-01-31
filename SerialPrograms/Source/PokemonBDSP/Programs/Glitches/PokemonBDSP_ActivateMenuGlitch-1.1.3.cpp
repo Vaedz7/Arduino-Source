@@ -5,7 +5,7 @@
  */
 
 #include <QtGlobal>
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/Pokemon_Strings.h"
@@ -26,7 +26,8 @@ ActivateMenuGlitch113_Descriptor::ActivateMenuGlitch113_Descriptor()
         "ComputerControl/blob/master/Wiki/Programs/PokemonBDSP/ActivateMenuGlitch-113.md",
         "Activate the menu glitch using the strength/fly method. "
         "<font color=\"red\">(This works on game versions 1.1.1 - 1.1.3. It has been patched out in later versions.)</font>",
-        FeedbackType::OPTIONAL_, false,
+        FeedbackType::OPTIONAL_,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -63,7 +64,7 @@ void ActivateMenuGlitch113::program(SingleSwitchProgramEnvironment& env, BotBase
         {{detector}}
     );
     if (ret < 0){
-        throw OperationFailedException(console, "Map not detected after 2 seconds.");
+        throw OperationFailedException(console, "Map not detected after 2 seconds.", true);
     }else{
         console.log("Detected map!", COLOR_BLUE);
     }

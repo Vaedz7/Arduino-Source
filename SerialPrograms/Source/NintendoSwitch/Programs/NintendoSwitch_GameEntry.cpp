@@ -4,8 +4,8 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
 #include "Common/NintendoSwitch/NintendoSwitch_ControllerDefs.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/SolidColorTest.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -99,8 +99,11 @@ void start_game_from_home_with_inference(
         if (ret == 0){
             console.log("Detected Home screen.");
         }else{
-            console.log("Failed to detect Home screen after 10 seconds.", COLOR_RED);
-            throw OperationFailedException(console, "Failed to detect Home screen after 10 seconds.");
+            throw OperationFailedException(
+                console,
+                "start_game_from_home_with_inference(): Failed to detect Home screen after 10 seconds.",
+                true
+            );
         }
         context.wait_for(std::chrono::milliseconds(100));
     }
@@ -134,27 +137,28 @@ void start_game_from_home_with_inference(
         case 0:
             console.log("Detected home screen (again).", COLOR_RED);
             pbf_press_button(context, BUTTON_A, 20, 105);
-            continue;
+            break;
         case 1:
             console.log("Detected user-select screen.");
-            break;
+            move_to_user(context, user_slot);
+            pbf_press_button(context, BUTTON_A, 10, start_game_wait);
+            return;
         case 2:
             console.log("Detected update menu.", COLOR_RED);
             pbf_press_dpad(context, DPAD_UP, 5, 0);
             pbf_press_button(context, BUTTON_A, 20, 105);
+            break;
         case 3:
             console.log("Detected black screen. Game started...");
-            break;
+            return;
         default:
-            console.log("No recognizable state after 10 seconds.", COLOR_RED);
-            throw OperationFailedException(console, "No recognizable state after 10 seconds.");
+            throw OperationFailedException(
+                console,
+                "start_game_from_home_with_inference(): No recognizable state after 10 seconds.",
+                true
+            );
         }
-        break;
     }
-
-    //  Move to user and enter game.
-    move_to_user(context, user_slot);
-    pbf_press_button(context, BUTTON_A, 10, start_game_wait);
 }
 
 

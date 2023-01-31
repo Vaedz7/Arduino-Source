@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/Tools/StatsTracking.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
@@ -12,12 +12,8 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "PokemonLA/PokemonLA_Settings.h"
-#include "PokemonLA/Inference/Map/PokemonLA_MapDetector.h"
-#include "PokemonLA/Inference/PokemonLA_DialogDetector.h"
-#include "PokemonLA/Inference/PokemonLA_OverworldDetector.h"
 #include "PokemonLA/Inference/Sounds/PokemonLA_ShinySoundDetector.h"
 #include "PokemonLA/Programs/PokemonLA_GameEntry.h"
-#include "PokemonLA/Programs/PokemonLA_RegionNavigation.h"
 #include "PokemonLA_PostMMOSpawnReset.h"
 
 namespace PokemonAutomation{
@@ -33,7 +29,8 @@ PostMMOSpawnReset_Descriptor::PostMMOSpawnReset_Descriptor()
         STRING_POKEMON + " LA", "Post-MMO Spawn Reset",
         "ComputerControl/blob/master/Wiki/Programs/PokemonLA/PostMMOSpawnReset.md",
         "Constantly reset the spawn after MMO finishes.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -86,7 +83,7 @@ PostMMOSpawnReset::PostMMOSpawnReset()
         &NOTIFICATION_STATUS,
         &SHINY_DETECTED.NOTIFICATIONS,
         &NOTIFICATION_PROGRAM_FINISH,
-//        &NOTIFICATION_ERROR_RECOVERABLE,
+        &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
     })
 {
@@ -157,8 +154,10 @@ void PostMMOSpawnReset::program(SingleSwitchProgramEnvironment& env, BotBaseCont
         send_program_status_notification(env, NOTIFICATION_STATUS);
         try{
             run_iteration(env, context);
-        }catch (OperationFailedException&){
+        }catch (OperationFailedException& e){
             stats.errors++;
+            e.send_notification(env, NOTIFICATION_ERROR_RECOVERABLE);
+
             // run_iteration() restarts the game first then listens to shiny sound.
             // If there is any error generated when the game is running and is caught here,
             // we just do nothing to handle the error as in the next iteration of run_iteration()

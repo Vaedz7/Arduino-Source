@@ -37,13 +37,6 @@ public:
 };
 
 
-//  Thrown when the program requests a normal stop to the program.
-class ProgramFinishedException : public Exception{
-public:
-    virtual const char* name() const override{ return "ProgramFinishedException"; }
-};
-
-
 //  Thrown by BotBase connections when a command is issued while the connection
 //  is in a state that isn't accepting commands.
 //    - This should not be consumed except by the infra.
@@ -60,30 +53,6 @@ public:
 class OperationCancelledException : public Exception{
 public:
     virtual const char* name() const override{ return "OperationCancelledException"; }
-};
-
-
-//  Thrown by subroutines if they fail for an in-game reason.
-//  These include recoverable errors which can be consumed by the program.
-class OperationFailedException : public Exception{
-public:
-//    OperationFailedException(std::string message) : m_message(message) {}
-    OperationFailedException(Logger& logger, std::string message);
-    virtual const char* name() const override{ return "OperationFailedException"; }
-    virtual std::string message() const override{ return m_message; }
-private:
-    std::string m_message;
-};
-
-
-//  A generic exception that should not be caught.
-class FatalProgramException : public Exception{
-public:
-    FatalProgramException(Logger& logger, std::string message);
-    virtual const char* name() const override{ return "FatalProgramException"; }
-    virtual std::string message() const override{ return m_message; }
-private:
-    std::string m_message;
 };
 
 

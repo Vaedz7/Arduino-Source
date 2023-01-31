@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
@@ -28,7 +28,8 @@ DistortionWaiter_Descriptor::DistortionWaiter_Descriptor()
         STRING_POKEMON + " LA", "Distortion Waiter",
         "ComputerControl/blob/master/Wiki/Programs/PokemonLA/DistortionWaiter.md",
         "Wait for a distortion to appear.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -112,7 +113,7 @@ void DistortionWaiter::program(SingleSwitchProgramEnvironment& env, BotBaseConte
         );
         if (ret < 0){
             stats.errors++;
-            throw OperationFailedException(env.console, "No distortion found after one hour.");
+            throw OperationFailedException(env.console, "No distortion found after one hour.", true);
         }
 
         auto elapsed = current_time() - start;

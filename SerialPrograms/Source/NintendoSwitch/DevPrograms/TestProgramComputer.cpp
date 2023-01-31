@@ -4,6 +4,10 @@
  *
  */
 
+#ifdef _WIN64
+#include <Windows.h>
+#endif
+
 #include <set>
 #include <mutex>
 #include <fstream>
@@ -20,6 +24,8 @@
 #include "Common/Cpp/CpuId/CpuId.h"
 #include "Common/Cpp/Concurrency/AsyncDispatcher.h"
 #include "CommonFramework/Globals.h"
+#include "CommonFramework/Exceptions/ProgramFinishedException.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageFilter.h"
 #include "CommonFramework/OCR/OCR_RawOCR.h"
@@ -87,7 +93,7 @@
 #include "PokemonSV/Inference/Battles/PokemonSV_BattleMenuDetector.h"
 #include "PokemonSV/Inference/PokemonSV_OverworldDetector.h"
 #include "Integrations/DiscordWebhook.h"
-#include "PokemonSV/Programs/Multiplayer/PokemonSV_JoinTracker.h"
+#include "PokemonSV/Programs/TeraRaids/PokemonSV_JoinTracker.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "PokemonSV/Inference/Boxes/PokemonSV_BoxDetection.h"
 #include "CommonFramework/Environment/Environment.h"
@@ -97,6 +103,7 @@
 #include "CommonFramework/Inference/StatAccumulator.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
 #include "ClientSource/Connection/BotBase.h"
+#include "CommonFramework/Environment/Environment.h"
 
 #ifdef PA_ARCH_x86
 //#include "Kernels/Kernels_x64_SSE41.h"
@@ -173,8 +180,6 @@ void print(const Type* ptr, size_t len){
 
 
 
-
-
 void TestProgramComputer::program(ProgramEnvironment& env, CancellableScope& scope){
     using namespace Kernels;
 //    using namespace NintendoSwitch::PokemonSwSh;
@@ -182,9 +187,49 @@ void TestProgramComputer::program(ProgramEnvironment& env, CancellableScope& sco
     using namespace Pokemon;
 //    using namespace NintendoSwitch::PokemonSwSh::MaxLairInternal;
 
+//    throw OperationFailedException(env.logger(), "asdf");
+//    throw OperationFailedException(env.logger(), "asdf", std::make_shared<ImageRGB32>("20221118-024539201323.jpg"));
+//    throw ProgramFinishedException();
+//    throw FatalProgramException(env.logger(), "test");
 
 
+//    send_program_telemetry(env.logger(), true, COLOR_RED, env.program_info(), "Test", {}, "");
 
+//    throw ProgramFinishedException(env.logger(), "", std::make_shared<ImageRGB32>("TeraCode-S-chi-original.png"));
+
+
+    ImageRGB32 image("screenshot-20230130-150721112888.png");
+    SomethingInBoxSlotDetector detector(COLOR_RED);
+
+    cout << detector.detect(image) << endl;
+
+
+#if 0
+    FILETIME idle_time, kernel_time, user_time;
+    GetSystemTimes(&idle_time, &kernel_time, &user_time);
+//    cout <<  << endl;
+//    cout <<  << endl;
+//    cout <<  << endl;
+
+    uint64_t start_idle = idle_time.dwLowDateTime + ((uint64_t)idle_time.dwHighDateTime << 32);
+    uint64_t start_kernel = kernel_time.dwLowDateTime + ((uint64_t)kernel_time.dwHighDateTime << 32);
+    uint64_t start_user = user_time.dwLowDateTime + ((uint64_t)user_time.dwHighDateTime << 32);
+
+    scope.wait_for(std::chrono::seconds(4));
+
+    GetSystemTimes(&idle_time, &kernel_time, &user_time);
+//    cout <<  << endl;
+//    cout <<  << endl;
+//    cout <<  << endl;
+
+    uint64_t end_idle = idle_time.dwLowDateTime + ((uint64_t)idle_time.dwHighDateTime << 32);
+    uint64_t end_kernel = kernel_time.dwLowDateTime + ((uint64_t)kernel_time.dwHighDateTime << 32);
+    uint64_t end_user = user_time.dwLowDateTime + ((uint64_t)user_time.dwHighDateTime << 32);
+
+    cout << (end_idle - start_idle) * 100 / 1000000000. << endl;
+    cout << (end_kernel - start_kernel) * 100 / 1000000000. << endl;
+    cout << (end_user - start_user) * 100 / 1000000000. << endl;
+#endif
 
 #if 0
     uint32_t src[4 * 4] = {

@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "CommonFramework/Tools/StatsTracking.h"
@@ -35,7 +35,8 @@ ShinyHuntCustomPath_Descriptor::ShinyHuntCustomPath_Descriptor()
         STRING_POKEMON + " LA", "Shiny Hunt - Custom Path",
         "ComputerControl/blob/master/Wiki/Programs/PokemonLA/ShinyHunt-CustomPath.md",
         "Repeatedly travel on a custom path to shiny hunt " + STRING_POKEMON + " around it.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -93,7 +94,7 @@ ShinyHuntCustomPath::ShinyHuntCustomPath()
         &NOTIFICATION_STATUS,
         &SHINY_DETECTED_DESTINATION.NOTIFICATIONS,
         &NOTIFICATION_PROGRAM_FINISH,
-//        &NOTIFICATION_ERROR_RECOVERABLE,
+        &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
     })
 {
@@ -317,8 +318,10 @@ void ShinyHuntCustomPath::program(SingleSwitchProgramEnvironment& env, BotBaseCo
                 from_professor_return_to_jubilife(env, env.console, context);
             }
 
-        }catch (OperationFailedException&){
+        }catch (OperationFailedException& e){
             stats.errors++;
+            e.send_notification(env, NOTIFICATION_ERROR_RECOVERABLE);
+
             time_reset_run_count = 0;
             pbf_press_button(context, BUTTON_HOME, 20, GameSettings::instance().GAME_TO_HOME_DELAY);
             reset_game_from_home(env, env.console, context, ConsoleSettings::instance().TOLERATE_SYSTEM_UPDATE_MENU_FAST);

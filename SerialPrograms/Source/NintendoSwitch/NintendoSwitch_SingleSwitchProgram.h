@@ -56,7 +56,7 @@ public:
         std::string doc_link,
         std::string description,
         FeedbackType feedback,
-        bool allow_commands_while_running,
+        AllowCommandsWhenRunning allow_commands_while_running,
         PABotBaseLevel min_pabotbase_level
     );
 
@@ -101,7 +101,7 @@ private:
 //
 class SingleSwitchProgramInstance{
 public:
-    virtual ~SingleSwitchProgramInstance() = default;
+    virtual ~SingleSwitchProgramInstance();
     SingleSwitchProgramInstance(const SingleSwitchProgramInstance&) = delete;
     void operator=(const SingleSwitchProgramInstance&) = delete;
 

@@ -6,9 +6,12 @@
 
 #include <cmath>
 #include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/ProgramFinishedException.h"
+#include "CommonFramework/Exceptions/FatalProgramException.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
+#include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/Pokemon_Notification.h"
@@ -16,11 +19,12 @@
 //#include "PokemonSV/Inference/PokemonSV_GradientArrowDetector.h"
 #include "PokemonSV/Inference/Battles/PokemonSV_BattleMenuDetector.h"
 #include "PokemonSV/Inference/PokemonSV_PokemonSummaryReader.h"
-#include "PokemonSV/Inference/Tera/PokemonSV_TeraCardDetector.h"
 #include "PokemonSV/Inference/PokemonSV_MainMenuDetector.h"
 #include "PokemonSV/Inference/PokemonSV_OverworldDetector.h"
 #include "PokemonSV/Inference/PokemonSV_PokePortalDetector.h"
+#include "PokemonSV/Inference/Tera/PokemonSV_TeraCardDetector.h"
 #include "PokemonSV/Inference/Tera/PokemonSV_TeraRaidSearchDetector.h"
+#include "PokemonSV/Inference/Tera/PokemonSV_TeraRewardsReader.h"
 #include "PokemonSV/Programs/PokemonSV_ConnectToInternet.h"
 #include "PokemonSV/Programs/PokemonSV_BasicCatcher.h"
 #include "PokemonSV_TeraRoutines.h"
@@ -35,22 +39,35 @@ using namespace Pokemon;
 
 bool open_raid(ConsoleHandle& console, BotBaseContext& context){
     console.log("Opening raid...");
-
-    TeraCardWatcher card_detector(COLOR_RED);
-    int ret = run_until(
-        console, context,
-        [](BotBaseContext& context){
-            pbf_press_button(context, BUTTON_A, 20, 355);
-        },
-        {card_detector}
-    );
-    if (ret < 0){
-        console.log("No Tera raid found.", COLOR_ORANGE);
-        return false;
+    while (true){
+        TeraCardWatcher card_detector(COLOR_RED);
+        AdvanceDialogWatcher dialog(COLOR_YELLOW);
+        int ret = run_until(
+            console, context,
+            [](BotBaseContext& context){
+                //  Do 2 presses in quick succession in case one drops or is
+                //  needed to connect the controller.
+                pbf_press_button(context, BUTTON_A, 5, 5);
+                pbf_press_button(context, BUTTON_A, 20, 355);
+            },
+            {
+                card_detector,
+                dialog,
+            }
+        );
+        switch (ret){
+        case 0:
+            console.log("Tera raid found!", COLOR_BLUE);
+            return true;
+        case 1:
+            console.log("Detect possible uncatchable dialog...", COLOR_ORANGE);
+            pbf_press_button(context, BUTTON_B, 20, 105);
+            continue;
+        default:
+            console.log("No Tera raid found.", COLOR_ORANGE);
+            return false;
+        }
     }
-
-    console.log("Tera raid found!", COLOR_BLUE);
-    return true;
 }
 void close_raid(const ProgramInfo& info, ConsoleHandle& console, BotBaseContext& context){
     console.log("Closing raid...");
@@ -97,10 +114,10 @@ void open_hosting_lobby(
     WallClock start = current_time();
     while (true){
         context.wait_for_all_requests();
-        if (current_time() - start > std::chrono::minutes(5)){
+        if (current_time() - start > std::chrono::minutes(2)){
             dump_image_and_throw_recoverable_exception(
                 env.program_info(), console, "OpenLobbyFailed",
-                "Unable to open Tera lobby after 5 minutes."
+                "Unable to open Tera lobby after 2 minutes."
             );
         }
 
@@ -139,7 +156,7 @@ void open_hosting_lobby(
             console.log("Detected overworld.");
             recovery_mode = false;
             if (!open_raid(console, context)){
-                throw OperationFailedException(console, "No Tera raid found.");
+                throw OperationFailedException(console, "No Tera raid found.", true);
             }
             continue;
         case 1:
@@ -186,6 +203,7 @@ void enter_tera_search(
         PokePortalWatcher poke_portal(COLOR_GREEN);
         TeraRaidSearchWatcher raid_search(COLOR_CYAN);
         CodeEntryWatcher code_entry(COLOR_PURPLE);
+        AdvanceDialogWatcher dialog(COLOR_BLUE);
         context.wait_for_all_requests();
         int ret = wait_until(
             console, context,
@@ -196,6 +214,7 @@ void enter_tera_search(
                 poke_portal,
                 raid_search,
                 code_entry,
+                dialog,
             }
         );
         context.wait_for(std::chrono::milliseconds(100));
@@ -230,6 +249,10 @@ void enter_tera_search(
         case 4:
             console.log("Detected Code Entry.");
             return;
+        case 5:
+            console.log("Detected Dialog.");
+            pbf_press_button(context, BUTTON_B, 20, 105);
+            continue;
         default:
             dump_image_and_throw_recoverable_exception(
                 info, console, "EnterTeraSearchFailed",
@@ -243,10 +266,25 @@ void enter_tera_search(
 
 
 
+void stop_if_enough_rare_items(
+    ConsoleHandle& console, BotBaseContext& context,
+    size_t stop_on_sparkly_items
+){
+    if (stop_on_sparkly_items == 0){
+        return;
+    }
+    size_t sparkly_items = SparklyItemDetector::count_sparkly_items(console, context);
+    console.log("Sparkly Items Detected: " + std::to_string(sparkly_items), COLOR_BLUE);
+    if (sparkly_items >= stop_on_sparkly_items){
+        throw ProgramFinishedException(console, "Found a raid with " + std::to_string(sparkly_items) + " rare items!", true);
+    }
+}
+
+
 void exit_tera_win_without_catching(
     const ProgramInfo& info,
-    ConsoleHandle& console,
-    BotBaseContext& context
+    ConsoleHandle& console, BotBaseContext& context,
+    size_t stop_on_sparkly_items
 ){
     console.log("Exiting raid without catching...");
 
@@ -285,6 +323,7 @@ void exit_tera_win_without_catching(
             continue;
         case 1:
             console.log("Detected possible (A) Next button.");
+            stop_if_enough_rare_items(console, context, stop_on_sparkly_items);
             pbf_press_button(context, BUTTON_A, 20, 105);
             continue;
         case 2:
@@ -306,10 +345,10 @@ void exit_tera_win_without_catching(
 
 void exit_tera_win_by_catching(
     ProgramEnvironment& env,
-    ConsoleHandle& console,
-    BotBaseContext& context,
+    ConsoleHandle& console, BotBaseContext& context,
     Language language,
-    const std::string& ball_slug
+    const std::string& ball_slug,
+    size_t stop_on_sparkly_items
 ){
     console.log("Exiting raid with catching...");
 
@@ -318,8 +357,10 @@ void exit_tera_win_by_catching(
     while (true){
         context.wait_for_all_requests();
         if (current_time() - start > std::chrono::minutes(5)){
-            dump_image_and_throw_recoverable_exception(env.program_info(), console, "ExitTeraWinFailed",
-                "Failed to return to overworld after 5 minutes.");
+            dump_image_and_throw_recoverable_exception(
+                env.program_info(), console, "ExitTeraWinFailed",
+                "Failed to return to overworld after 5 minutes."
+            );
         }
 
         TeraCatchWatcher catch_menu(COLOR_BLUE);
@@ -361,7 +402,7 @@ void exit_tera_win_by_catching(
             BattleBallReader reader(console, language);
             int quantity = move_to_ball(reader, console, context, ball_slug);
             if (quantity == 0){
-                throw FatalProgramException(console.logger(), "Unable to find appropriate ball. Did you run out?");
+                throw FatalProgramException(console, "Unable to find appropriate ball. Did you run out?", true);
             }
             if (quantity < 0){
                 console.log("Unable to read ball quantity.", COLOR_RED);
@@ -372,6 +413,7 @@ void exit_tera_win_by_catching(
         }
         case 1:
             console.log("Detected (A) Next button.");
+            stop_if_enough_rare_items(console, context, stop_on_sparkly_items);
             pbf_press_button(context, BUTTON_A, 20, 105);
             pbf_press_button(context, BUTTON_B, 20, 105);
             continue;
@@ -406,13 +448,12 @@ void exit_tera_win_by_catching(
 
 TeraResult exit_tera_win_by_catching(
     ProgramEnvironment& env,
-    ConsoleHandle& console,
-    BotBaseContext& context,
+    ConsoleHandle& console, BotBaseContext& context,
     Language language,
     const std::string& ball_slug,
     EventNotificationOption& notification_nonshiny,
     EventNotificationOption& notification_shiny,
-    bool stop_on_shiny,
+    bool stop_on_shiny, size_t stop_on_sparkly_items,
     std::atomic<uint64_t>* stat_shinies
 ){
     console.log("Exiting raid with catching...");
@@ -423,8 +464,10 @@ TeraResult exit_tera_win_by_catching(
     while (true){
         context.wait_for_all_requests();
         if (current_time() - start > std::chrono::minutes(5)){
-            dump_image_and_throw_recoverable_exception(env.program_info(), console, "ExitTeraWinFailed",
-                "Failed to return to overworld after 5 minutes.");
+            dump_image_and_throw_recoverable_exception(
+                env.program_info(), console, "ExitTeraWinFailed",
+                "Failed to return to overworld after 5 minutes."
+            );
         }
 
         TeraCatchWatcher catch_menu(COLOR_BLUE);
@@ -470,7 +513,7 @@ TeraResult exit_tera_win_by_catching(
             BattleBallReader reader(console, language);
             int quantity = move_to_ball(reader, console, context, ball_slug);
             if (quantity == 0){
-                throw FatalProgramException(console.logger(), "Unable to find appropriate ball. Did you run out?");
+                throw FatalProgramException(console, "Unable to find appropriate ball. Did you run out?", true);
             }
             if (quantity < 0){
                 console.log("Unable to read ball quantity.", COLOR_RED);
@@ -505,6 +548,7 @@ TeraResult exit_tera_win_by_catching(
             //  open. If so, fall-through to that.
             if (!summary.detect(console.video().snapshot())){
                 console.log("Detected possible (A) Next button.");
+                stop_if_enough_rare_items(console, context, stop_on_sparkly_items);
                 pbf_press_button(context, BUTTON_A, 20, 105);
                 pbf_press_button(context, BUTTON_B, 20, 105);
                 break;
@@ -530,10 +574,19 @@ TeraResult exit_tera_win_by_catching(
             continue;
         case 8:
             console.log("Detected overworld.");
+            if (stop_on_shiny && result == TeraResult::NO_DETECTION){
+                throw UserSetupError(
+                    console,
+                    "Unable to find " + STRING_POKEMON + " summary to check for shininess. "
+                    "Make sure your party is full and \"Send to Boxes\" is set to \"Manual\"."
+                );
+            }
             return result;
         default:
-            dump_image_and_throw_recoverable_exception(env.program_info(), console, "ExitTeraWinFailed",
-                "exit_tera_win_by_catching(): No recognized state after 60 seconds.");
+            dump_image_and_throw_recoverable_exception(
+                env.program_info(), console, "ExitTeraWinFailed",
+                "exit_tera_win_by_catching(): No recognized state after 60 seconds."
+            );
         }
     }
 }

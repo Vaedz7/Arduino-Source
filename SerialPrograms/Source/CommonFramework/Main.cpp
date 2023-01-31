@@ -1,7 +1,10 @@
 
+#include <QDir>
 #include <QApplication>
 //#include <QTextStream>
 #include <QMessageBox>
+#include <dpp/DPP_SilenceWarnings.h>
+#include <Integrations/DppIntegration/DppClient.h>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/ImageResolution.h"
 #include "PersistentSettings.h"
@@ -12,6 +15,7 @@
 #include "Logging/OutputRedirector.h"
 //#include "Tools/StatsDatabase.h"
 #include "Integrations/SleepyDiscordRunner.h"
+#include "Globals.h"
 #include "GlobalSettingsPanel.h"
 //#include "Windows/DpiScaler.h"
 #include "NewVersionCheck.h"
@@ -47,7 +51,7 @@ int main(int argc, char *argv[]){
     OutputRedirector redirect_stdout(std::cout, "stdout", Color());
     OutputRedirector redirect_stderr(std::cerr, "stderr", COLOR_RED);
 
-    // Read program settings from json file: SerialPrograms-Settings.json.
+    //  Read program settings from json file: SerialPrograms-Settings.json.
     try{
         PERSISTENT_SETTINGS().read();
     }catch (const FileException& error){
@@ -56,24 +60,37 @@ int main(int argc, char *argv[]){
         global_logger_tagged().log(error.message(), COLOR_RED);
     }
 
+    //  Make settings directory.
+    QDir().mkpath(QString::fromStdString(SETTINGS_PATH));
+
+    // Make screenshots directory.
+    QDir().mkpath(QString::fromStdString(SCREENSHOTS_PATH));
+
     if (GlobalSettings::instance().COMMAND_LINE_TEST_MODE){
         return run_command_line_tests();
     }
 
-    // Check whether the hardware is powerful enough to run this program.
+    //  Check whether the hardware is powerful enough to run this program.
     if (!check_hardware()){
         return 1;
     }
 
     check_new_version(global_logger_tagged());
 
-#if 0
-    application.connect(
-        &application, &QGuiApplication::primaryScreenChanged,
-        &application, [&](QScreen* screen){
-            cout << "asdf" << endl;
-        }
-    );
+#ifdef PA_SLEEPY
+    if (GlobalSettings::instance().DISCORD.integration.run_on_start &&
+        GlobalSettings::instance().DISCORD.integration.library == Integration::DiscordIntegrationSettingsOption::Library::SleepyDiscord
+    ){
+        Integration::SleepyDiscordRunner::sleepy_connect();
+    }
+#endif
+
+#ifdef PA_DPP
+    if (GlobalSettings::instance().DISCORD.integration.run_on_start &&
+        GlobalSettings::instance().DISCORD.integration.library == Integration::DiscordIntegrationSettingsOption::Library::DPP
+    ){
+        Integration::DppClient::Client::instance().connect();
+    }
 #endif
 
     int ret;
@@ -89,6 +106,10 @@ int main(int argc, char *argv[]){
 
 #ifdef PA_SLEEPY
     Integration::SleepyDiscordRunner::sleepy_terminate();
+#endif
+
+#ifdef PA_DPP
+    Integration::DppClient::Client::instance().disconnect();
 #endif
 
     return ret;

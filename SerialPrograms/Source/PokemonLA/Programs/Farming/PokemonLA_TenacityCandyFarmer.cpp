@@ -6,18 +6,15 @@
 
 #include <chrono>
 #include <iostream>
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/Tools/StatsTracking.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
-#include "NintendoSwitch/NintendoSwitch_Settings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/Pokemon_Strings.h"
-#include "PokemonLA/PokemonLA_Settings.h"
 #include "PokemonLA/Inference/Battles/PokemonLA_BattleMenuDetector.h"
 #include "PokemonLA/Inference/Battles/PokemonLA_BattlePokemonSwitchDetector.h"
 #include "PokemonLA/Programs/PokemonLA_BattleRoutines.h"
-#include "PokemonLA/Programs/PokemonLA_GameEntry.h"
 #include "PokemonLA/Programs/PokemonLA_GameSave.h"
 #include "PokemonLA_TenacityCandyFarmer.h"
 #include "PokemonLA/Inference/Objects/PokemonLA_ArcPhoneDetector.h"
@@ -38,7 +35,8 @@ TenacityCandyFarmer_Descriptor::TenacityCandyFarmer_Descriptor()
         STRING_POKEMON + " LA", "Tenacity Candy Farmer",
         "ComputerControl/blob/master/Wiki/Programs/PokemonLA/TenacityCandyFarmer.md",
         "Attend Ingo's Path of Tenacity battles leading with a stats fully upgraded, max level, Modest nature Arceus with Legend Plate applied to grind exp, exp candies XL and evolution items.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -129,7 +127,7 @@ bool TenacityCandyFarmer::run_iteration(SingleSwitchProgramEnvironment& env, Bot
             }
         );
         if (ret != 0){
-            throw OperationFailedException(env.console, "Unable to detect Tenacity path menu after 10 A presses.");
+            throw OperationFailedException(env.console, "Unable to detect Tenacity path menu after 10 A presses.", true);
         }
     }
     // Move down the menu box to select Pearl Clan
@@ -204,7 +202,7 @@ bool TenacityCandyFarmer::run_iteration(SingleSwitchProgramEnvironment& env, Bot
                 {{arc_phone_detector}}
             );
             if (ret < 0){
-                throw OperationFailedException(env.console, "Failed to find Arc phone after 20 seconds when the last battle ends.");
+                throw OperationFailedException(env.console, "Failed to find Arc phone after 20 seconds when the last battle ends.", true);
             }
             env.log("Found Arc Phone. End of one path.");
 
@@ -234,7 +232,7 @@ bool TenacityCandyFarmer::run_iteration(SingleSwitchProgramEnvironment& env, Bot
         if (ret < 0){
             env.console.log("Error: Failed to find battle menu after 2 minutes.");
 //            return true;
-            throw OperationFailedException(env.console, "Failed to find battle menu after 2 minutes.");
+            throw OperationFailedException(env.console, "Failed to find battle menu after 2 minutes.", true);
         }
 
         if (ret == 0){

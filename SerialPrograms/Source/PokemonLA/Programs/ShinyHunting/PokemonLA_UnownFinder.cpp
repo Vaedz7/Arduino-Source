@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/Tools/StatsTracking.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
@@ -39,7 +39,8 @@ UnownFinder_Descriptor::UnownFinder_Descriptor()
         STRING_POKEMON + " LA", "Unown Hunter",
         "ComputerControl/blob/master/Wiki/Programs/PokemonLA/UnownHunter.md",
         "Constantly reset to find a Shiny Unown or any Shiny in the path.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -86,6 +87,7 @@ UnownFinder::UnownFinder()
         &SHINY_DETECTED_ENROUTE.NOTIFICATIONS,
         &SHINY_DETECTED_DESTINATION.NOTIFICATIONS,
         &NOTIFICATION_PROGRAM_FINISH,
+        &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
     })
 {
@@ -178,8 +180,10 @@ void UnownFinder::program(SingleSwitchProgramEnvironment& env, BotBaseContext& c
         send_program_status_notification(env, NOTIFICATION_STATUS);
         try{
             run_iteration(env, context);
-        }catch (OperationFailedException&){
+        }catch (OperationFailedException& e){
             stats.errors++;
+            e.send_notification(env, NOTIFICATION_ERROR_RECOVERABLE);
+
             pbf_press_button(context, BUTTON_HOME, 20, GameSettings::instance().GAME_TO_HOME_DELAY);
             reset_game_from_home(env, env.console, context, ConsoleSettings::instance().TOLERATE_SYSTEM_UPDATE_MENU_FAST);
         }

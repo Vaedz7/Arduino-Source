@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
@@ -32,7 +32,8 @@ StatsResetMoltres_Descriptor::StatsResetMoltres_Descriptor()
         STRING_POKEMON + " SwSh", "Stats Reset - Moltres",
         "ComputerControl/blob/master/Wiki/Programs/PokemonSwSh/StatsReset-Moltres.md",
         "Repeatedly catch moltres until you get the stats you want.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -126,7 +127,7 @@ void StatsResetMoltres::program(SingleSwitchProgramEnvironment& env, BotBaseCont
         context.wait_for_all_requests();
         CatchResults result = basic_catcher(env.console, context, LANGUAGE, "master-ball");
         if (result.result != CatchResult::POKEMON_CAUGHT){
-            throw OperationFailedException(env.console, "Unable to catch Moltres.");
+            throw OperationFailedException(env.console, "Unable to catch Moltres.", true);
         }
 
         context.wait_for_all_requests();

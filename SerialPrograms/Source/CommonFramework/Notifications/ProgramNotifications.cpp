@@ -5,6 +5,8 @@
  */
 
 #include <QFile>
+#include <dpp/DPP_SilenceWarnings.h>
+#include <Integrations/DppIntegration/DppClient.h>
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/Json/JsonArray.h"
@@ -28,31 +30,6 @@
 namespace PokemonAutomation{
 
 
-#if 0
-JsonObject make_header_field(const ProgramInfo& info){
-    JsonObject field;
-    field["name"] = info.program_name;
-    std::string text;
-
-    const std::string& instance_name = GlobalSettings::instance().DISCORD.message.instance_name;
-    if (!instance_name.empty()){
-        text += "Instance Name: " + instance_name;
-    }
-
-    text += "\nUp Time: ";
-    if (info.start_time != WallClock::min()){
-        text += duration_to_string(
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                current_time() - info.start_time
-            )
-        );
-    }else{
-        text += "(test message)";
-    }
-    field["value"] = std::move(text);
-    return field;
-}
-#endif
 void append_body_fields(JsonArray& fields, const std::vector<std::pair<std::string, std::string>>& messages){
     for (const auto& item : messages){
         JsonObject field;
@@ -64,35 +41,6 @@ void append_body_fields(JsonArray& fields, const std::vector<std::pair<std::stri
     }
 }
 JsonObject make_credits_field(const ProgramInfo& info){
-#if 0
-    JsonObject field;
-    const std::string& instance_name = GlobalSettings::instance().DISCORD.message.instance_name;
-    field["name"] = instance_name.empty()
-        ? "Session:"
-        : "Session: (" + instance_name + ")";
-    std::string text = info.program_name;
-    if (info.start_time != WallClock::min()){
-        text += "\nUp Time: ";
-        text += duration_to_string(
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                current_time() - info.start_time
-            )
-        );
-    }
-
-    text += "\nPowered By: ";
-    text += PreloadSettings::instance().DEVELOPER_MODE
-        ? PROGRAM_NAME + " CC " + PROGRAM_VERSION + "-dev"
-        : PROGRAM_NAME + " CC " + PROGRAM_VERSION + "";
-    if (GlobalSettings::instance().HIDE_NOTIF_DISCORD_LINK){
-        text += " ([GitHub](" + PROJECT_GITHUB_URL + "About/))";
-    }else{
-        text += " ([GitHub](" + PROJECT_GITHUB_URL + "About/)/[Discord](" + DISCORD_LINK_URL + "))";
-    }
-
-    field["value"] = std::move(text);
-    return field;
-#else
     JsonObject field;
     field["name"] = "Powered By:";
     std::string text = PreloadSettings::instance().DEVELOPER_MODE
@@ -105,7 +53,6 @@ JsonObject make_credits_field(const ProgramInfo& info){
     }
     field["value"] = std::move(text);
     return field;
-#endif
 }
 std::pair<std::string, std::string> make_session_field(
     const ProgramInfo& info,
@@ -149,10 +96,9 @@ void send_raw_notification(
     std::shared_ptr<PendingFileSend> file(new PendingFileSend(logger, image));
     bool hasFile = !file->filepath().empty();
 
-    JsonObject embed_sleepy;
+    JsonObject embed;
     JsonArray embeds;
     {
-        JsonObject embed;
         embed["title"] = title;
 
         if (color){
@@ -171,19 +117,30 @@ void send_raw_notification(
             embed["image"] = std::move(field);
         }
         embeds.push_back(embed.clone());
-        embed_sleepy = std::move(embed);
     }
 
-    Integration::DiscordWebhook::send_message(
-        logger, should_ping, tags, "",
+    Integration::DiscordWebhook::send_embed(
+        logger, should_ping, tags,
         std::move(embeds),
         hasFile ? file : nullptr
     );
+
 #ifdef PA_SLEEPY
-    Integration::SleepyDiscordRunner::send_message_sleepy(
-        should_ping, tags, "", embed_sleepy,
-        hasFile ? file : nullptr
-    );
+    if (GlobalSettings::instance().DISCORD.integration.library == Integration::DiscordIntegrationSettingsOption::Library::SleepyDiscord){
+        Integration::SleepyDiscordRunner::send_embed_sleepy(
+            should_ping, tags, std::move(embed),
+            hasFile ? file : nullptr
+        );
+    }
+#endif
+
+#ifdef PA_DPP
+    if (GlobalSettings::instance().DISCORD.integration.library == Integration::DiscordIntegrationSettingsOption::Library::DPP){
+        Integration::DppClient::Client::instance().send_embed_dpp(
+            should_ping, color, tags, std::move(embed),
+            hasFile ? file : nullptr
+        );
+    }
 #endif
 }
 void send_raw_notification(
@@ -197,10 +154,9 @@ void send_raw_notification(
     std::shared_ptr<PendingFileSend> file(new PendingFileSend(filepath, true));
     bool hasFile = !file->filepath().empty();
 
-    JsonObject embed_sleepy;
+    JsonObject embed;
     JsonArray embeds;
     {
-        JsonObject embed;
         embed["title"] = title;
 
         if (color){
@@ -214,19 +170,30 @@ void send_raw_notification(
         embed["fields"] = std::move(fields);
 
         embeds.push_back(embed.clone());
-        embed_sleepy = std::move(embed);
     }
 
-    Integration::DiscordWebhook::send_message(
-        logger, should_ping, tags, "",
+    Integration::DiscordWebhook::send_embed(
+        logger, should_ping, tags,
         std::move(embeds),
         hasFile ? file : nullptr
     );
+
 #ifdef PA_SLEEPY
-    Integration::SleepyDiscordRunner::send_message_sleepy(
-        should_ping, tags, "", embed_sleepy,
-        hasFile ? file : nullptr
-    );
+    if (GlobalSettings::instance().DISCORD.integration.library == Integration::DiscordIntegrationSettingsOption::Library::SleepyDiscord){
+        Integration::SleepyDiscordRunner::send_embed_sleepy(
+            should_ping, tags, std::move(embed),
+            hasFile ? file : nullptr
+        );
+    }
+#endif
+
+#ifdef PA_DPP
+    if (GlobalSettings::instance().DISCORD.integration.library == Integration::DiscordIntegrationSettingsOption::Library::DPP){
+        Integration::DppClient::Client::instance().send_embed_dpp(
+            should_ping, color, tags, std::move(embed),
+            hasFile ? file : nullptr
+        );
+    }
 #endif
 }
 
@@ -407,74 +374,24 @@ void send_program_recoverable_error_notification(
         image, keep_file
     );
 }
-
-
-
-
-
-
-void send_program_finished_notification(
-    Logger& logger, EventNotificationOption& settings,
-    const ProgramInfo& info,
-    const std::string& message,
-    const StatsTracker* current_stats,
-    const StatsTracker* historical_stats,
-    const ImageViewRGB32& image, bool keep_file
-){
-    std::vector<std::pair<std::string, std::string>> messages{
-        {"Message:", message},
-    };
-#if 1
-    messages.emplace_back(
-        make_session_field(info, current_stats, "")
-    );
-#else
-    if (!current_stats.empty()){
-        messages.emplace_back("Session Stats:", std::move(current_stats));
-    }
-#endif
-    if (GlobalSettings::instance().ALL_STATS && historical_stats){
-        messages.emplace_back("Historical Stats:", historical_stats->to_str());
-    }
-    send_raw_program_notification(
-        logger, settings,
-        COLOR_GREEN, info,
-        "Program Finished",
-        messages,
-        image, keep_file
-    );
-}
 void send_program_fatal_error_notification(
-    Logger& logger, EventNotificationOption& settings,
-    const ProgramInfo& info,
+    ProgramEnvironment& env, EventNotificationOption& settings,
     const std::string& message,
-    const StatsTracker* current_stats,
-    const StatsTracker* historical_stats,
     const ImageViewRGB32& image, bool keep_file
 ){
-    std::vector<std::pair<std::string, std::string>> messages{
-        {"Message:", message},
-    };
-#if 1
-    messages.emplace_back(
-        make_session_field(info, current_stats, "")
-    );
-#else
-    if (!current_stats.empty()){
-        messages.emplace_back("Session Stats:", std::move(current_stats));
-    }
-#endif
-    if (GlobalSettings::instance().ALL_STATS && historical_stats){
-        messages.emplace_back("Historical Stats:", historical_stats->to_str());
-    }
-    send_raw_program_notification(
-        logger, settings,
-        COLOR_RED, info,
+    send_program_notification(
+        env, settings,
+        COLOR_RED,
         "Program Stopped (Fatal Error)",
-        messages,
+        {{"Message:", message}}, "",
         image, keep_file
     );
 }
+
+
+
+
+
 
 
 
@@ -493,6 +410,24 @@ void send_program_telemetry(
     if (!GlobalSettings::instance().SEND_ERROR_REPORTS){
         return;
     }
+
+
+    //  Rate limit the telemetry to 10/hour.
+    static std::set<WallClock> sends;
+    WallClock now = current_time();
+    WallClock threshold = now - std::chrono::minutes(1);
+    while (!sends.empty()){
+        auto iter = sends.begin();
+        if (*iter > threshold){
+            break;
+        }
+        sends.erase(iter);
+    }
+    if (sends.size() >= 10){
+        return;
+    }
+    sends.insert(now);
+
 
     bool hasFile = !file.empty();
     std::shared_ptr<PendingFileSend> pending = !hasFile

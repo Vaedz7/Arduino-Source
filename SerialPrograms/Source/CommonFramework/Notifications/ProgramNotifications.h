@@ -9,14 +9,13 @@
 
 #include <vector>
 #include <string>
-#include "CommonFramework/Logging/Logger.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "ProgramInfo.h"
-#include "MessageAttachment.h"
 #include "EventNotificationOption.h"
 
 namespace PokemonAutomation{
 
+class Logger;
 class StatsTracker;
 class ProgramEnvironment;
 
@@ -80,26 +79,12 @@ void send_program_recoverable_error_notification(
     const std::string& message,
     const ImageViewRGB32& image = ImageViewRGB32(), bool keep_file = false
 );
-
-
-
-//  Notifications without the environment.
-void send_program_finished_notification(
-    Logger& logger, EventNotificationOption& settings,
-    const ProgramInfo& info,
-    const std::string& message,
-    const StatsTracker* current_stats,
-    const StatsTracker* historical_stats,
-    const ImageViewRGB32& image = ImageViewRGB32(), bool keep_file = false
-);
 void send_program_fatal_error_notification(
-    Logger& logger, EventNotificationOption& settings,
-    const ProgramInfo& info,
+    ProgramEnvironment& env, EventNotificationOption& settings,
     const std::string& message,
-    const StatsTracker* current_stats,
-    const StatsTracker* historical_stats,
     const ImageViewRGB32& image = ImageViewRGB32(), bool keep_file = false
 );
+
 
 
 

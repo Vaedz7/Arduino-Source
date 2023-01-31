@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/Tools/StatsTracking.h"
@@ -30,7 +30,8 @@ MassRelease_Descriptor::MassRelease_Descriptor()
         STRING_POKEMON + " SV", "Mass Release",
         "ComputerControl/blob/master/Wiki/Programs/PokemonSV/MassRelease.md",
         "Mass release boxes of Pokémon.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -117,7 +118,7 @@ void MassRelease::release_one(BoxDetector& box_detector, SingleSwitchProgramEnvi
     // Try to change to stats or judge view
     if (m_in_judge_view == false){
         const bool throw_exception = false;
-        if (change_stats_view_to_judge(env.program_info(), env.console, context, throw_exception)){
+        if (change_view_to_stats_or_judge(env.console, context, throw_exception)){
             m_in_judge_view = true;
         } else{
             // it is an egg
@@ -138,14 +139,14 @@ void MassRelease::release_one(BoxDetector& box_detector, SingleSwitchProgramEnvi
         }
     }
 
-    try {
+    try{
         size_t errors = 0;
         release_one_pokemon(env.program_info(), env.console, context, errors);
         stats.m_released++;
         stats.m_errors += errors;
-    } catch(OperationFailedException& e){
+    }catch (OperationFailedException&){
         stats.m_errors++;
-        throw e;
+        throw;
     }
 }
 void MassRelease::release_box(BoxDetector& box_detector, SingleSwitchProgramEnvironment& env, BotBaseContext& context){

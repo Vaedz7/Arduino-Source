@@ -6,8 +6,8 @@
 
 #include <sstream>
 #include <map>
-#include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Language.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
@@ -130,7 +130,8 @@ BoxReorderNationalDex_Descriptor::BoxReorderNationalDex_Descriptor()
         STRING_POKEMON + " SwSh", "Box Reorder National Dex",
         "ComputerControl/blob/master/Wiki/Programs/PokemonSwSh/BoxReorderNationalDex.md",
         "Order boxes of " + STRING_POKEMON + ".",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -188,7 +189,7 @@ void BoxReorderNationalDex::program(SingleSwitchProgramEnvironment& env, BotBase
             const auto [box, row, col] = get_location(i);
             std::stringstream os;
             os << "Failed to read pokemon name at box " << box << " row " << row << " col " << col;
-            throw OperationFailedException(env.console, os.str());
+            throw OperationFailedException(env.console, os.str(), true);
         }
     }
     

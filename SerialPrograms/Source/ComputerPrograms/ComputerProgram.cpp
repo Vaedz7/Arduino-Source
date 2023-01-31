@@ -35,7 +35,12 @@ std::unique_ptr<PanelInstance> ComputerProgramDescriptor::make_panel() const{
 
 ComputerProgramInstance::ComputerProgramInstance()
     : m_options(LockWhileRunning::LOCKED)
-    , NOTIFICATION_PROGRAM_FINISH("Program Finished", true, true)
+    , NOTIFICATION_PROGRAM_FINISH(
+        "Program Finished",
+        true, true,
+        ImageAttachmentMode::JPG,
+        {"Notifs"}
+    )
     , NOTIFICATION_ERROR_RECOVERABLE(
         "Program Error (Recoverable)",
         true, false,
@@ -45,6 +50,7 @@ ComputerProgramInstance::ComputerProgramInstance()
     , NOTIFICATION_ERROR_FATAL(
         "Program Error (Fatal)",
         true, true,
+        ImageAttachmentMode::PNG,
         {"Notifs"}
     )
 {}

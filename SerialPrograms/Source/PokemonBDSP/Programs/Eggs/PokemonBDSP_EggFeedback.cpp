@@ -4,8 +4,7 @@
  *
  */
 
-#include "Common/Compiler.h"
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
@@ -14,7 +13,6 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/PokemonBDSP_Settings.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
-#include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameNavigation.h"
 #include "PokemonBDSP_EggRoutines.h"
@@ -50,9 +48,9 @@ void hatch_egg(ConsoleHandle& console, BotBaseContext& context){
             console.log("Egg is hatching!");
             break;
         case 1:
-            throw OperationFailedException(console, "Frozen screen detected!");
+            throw OperationFailedException(console, "Frozen screen detected!", true);
         default:
-            throw OperationFailedException(console, "No hatch detected after 8 minutes of spinning.");
+            throw OperationFailedException(console, "No hatch detected after 8 minutes of spinning.", true);
         }
     }while (false);
 
@@ -70,7 +68,7 @@ void hatch_egg(ConsoleHandle& console, BotBaseContext& context){
             {{dialog}}
         );
         if (ret < 0){
-            throw OperationFailedException(console, "End of hatch not detected after 30 seconds.");
+            throw OperationFailedException(console, "End of hatch not detected after 30 seconds.", true);
         }
         console.log("Egg finished hatching.");
         pbf_mash_button(context, BUTTON_B, 1 * TICKS_PER_SECOND);
@@ -140,7 +138,7 @@ void release(ConsoleHandle& console, BotBaseContext& context){
         }
         pbf_press_button(context, BUTTON_ZL, 20, 105);
     }
-    throw OperationFailedException(console, "Unexpected dialogs when releasing.");
+    throw OperationFailedException(console, "Unexpected dialogs when releasing.", true);
 }
 
 

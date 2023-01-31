@@ -5,7 +5,7 @@
  */
 
 #include "Common/Compiler.h"
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "NintendoSwitch/NintendoSwitch_Settings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -13,10 +13,8 @@
 #include "Pokemon/Inference/Pokemon_IVCheckerReader.h"
 #include "PokemonSwSh/Inference/PokemonSwSh_IVCheckerReader.h"
 #include "PokemonBDSP/PokemonBDSP_Settings.h"
-#include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameNavigation.h"
-#include "PokemonBDSP_EggFeedback.h"
 #include "PokemonBDSP_EggAutonomousState.h"
 #include "PokemonBDSP_EggAutonomous.h"
 
@@ -33,7 +31,8 @@ EggAutonomous_Descriptor::EggAutonomous_Descriptor()
         STRING_POKEMON + " BDSP", "Egg Autonomous",
         "ComputerControl/blob/master/Wiki/Programs/PokemonBDSP/EggAutonomous.md",
         "Automatically fetch+hatch eggs and keep all shinies.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -214,12 +213,13 @@ void EggAutonomous::program(SingleSwitchProgramEnvironment& env, BotBaseContext&
         }catch (OperationFailedException& e){
             // If there is no auto save, then we shouldn't reset to game to lose previous progress.
             if (AUTO_SAVING == AutoSave::NoAutoSave){
-                throw e;
+                throw;
             }
+            e.send_notification(env, NOTIFICATION_ERROR_RECOVERABLE);
 
             consecutive_failures++;
             if (consecutive_failures >= 3){
-                throw OperationFailedException(env.console, "Failed 3 batches in the row.");
+                throw OperationFailedException(env.console, "Failed 3 batches in the row.", true);
             }
             pbf_press_button(context, BUTTON_HOME, 20, GameSettings::instance().GAME_TO_HOME_DELAY);
             reset_game_from_home(env, env.console, context, ConsoleSettings::instance().TOLERATE_SYSTEM_UPDATE_MENU_FAST);

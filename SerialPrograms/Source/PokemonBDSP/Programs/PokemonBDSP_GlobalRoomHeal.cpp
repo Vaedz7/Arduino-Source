@@ -4,9 +4,8 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
-#include "CommonFramework/Inference/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
 #include "PokemonBDSP_GlobalRoomHeal.h"
@@ -39,7 +38,7 @@ bool heal_by_global_room(ConsoleHandle& console, BotBaseContext& context){
         {{arrow}}
     );
     if (ret < 0){
-        throw OperationFailedException(console, "No selection arrow detected when using Global Room.");
+        throw OperationFailedException(console, "No selection arrow detected when using Global Room.", true);
     }
 
     // Select "Yes"

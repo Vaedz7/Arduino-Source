@@ -5,8 +5,10 @@
  */
 
 #include <cmath>
-#include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
+#include "CommonFramework/Exceptions/ProgramFinishedException.h"
+#include "CommonFramework/Exceptions/FatalProgramException.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/Tools/StatsTracking.h"
@@ -38,7 +40,8 @@ EggAutonomous_Descriptor::EggAutonomous_Descriptor()
         STRING_POKEMON + " SV", "Egg Autonomous",
         "ComputerControl/blob/master/Wiki/Programs/PokemonSV/EggAutonomous.md",
         "Automatically get meal power, fetch eggs from a picnic and hatch them.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -211,23 +214,23 @@ void EggAutonomous::program(SingleSwitchProgramEnvironment& env, BotBaseContext&
         // Recoverable loop to fetch eggs:
         int num_party_eggs = -1;
         while(true){
-            try {
+            try{
                 num_party_eggs = fetch_eggs_full_routine(env, context);
                 break;
-            } catch(OperationFailedException& e){
-                handle_recoverable_error(env, context, e, consecutive_failures);
+            }catch (OperationFailedException& e){
+                handle_recoverable_error(env, context, NOTIFICATION_ERROR_RECOVERABLE, e, consecutive_failures);
             } // end try catch
         } // end recoverable loop to fetch eggs:
 
         // Recoverable loop to hatch eggs
         bool game_already_resetted = false;
         while(true){
-            try {
+            try{
                 hatch_eggs_full_routine(env, context, num_party_eggs);
                 consecutive_failures = 0;
                 break;
-            } catch(OperationFailedException& e){
-                handle_recoverable_error(env, context, e, consecutive_failures);
+            }catch (OperationFailedException& e){
+                handle_recoverable_error(env, context, NOTIFICATION_ERROR_RECOVERABLE, e, consecutive_failures);
                 // After resetting the game, we don't know how many eggs in party
                 num_party_eggs = -1;
 
@@ -238,7 +241,7 @@ void EggAutonomous::program(SingleSwitchProgramEnvironment& env, BotBaseContext&
                     game_already_resetted = true;
                     break;
                 }
-            } catch (ProgramFinishedException&){
+            }catch (ProgramFinishedException&){
                 env.update_stats();
                 GO_HOME_WHEN_DONE.run_end_of_program(context);
                 send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
@@ -374,8 +377,14 @@ void EggAutonomous::hatch_eggs_full_routine(SingleSwitchProgramEnvironment& env,
 
         // Move box cursor to party lead
         move_box_cursor(env.program_info(), env.console, context, BoxCursorLocation::PARTY, 0, 0);
+
         // Change box view to judge or stats
-        change_stats_view_to_judge(env.program_info(), env.console, context);
+        Language language = LANGUAGE;
+        if (language == Language::None){
+            change_view_to_stats_or_judge(env.console, context);
+        }else{
+            change_view_to_judge(env.console, context, language);
+        }
 
         const uint8_t expected_non_eggs_count_in_party = HAS_CLONE_RIDE_POKEMON ? 1 : 0;
         num_eggs_in_party = check_non_eggs_count_in_party(env.program_info(), env.console, context, expected_non_eggs_count_in_party);
@@ -427,14 +436,14 @@ void EggAutonomous::hatch_eggs_full_routine(SingleSwitchProgramEnvironment& env,
         if (AUTO_SAVING == AutoSave::AfterStartAndKeep){
             // move party back into the box
             env.log("Unload party in case we will reset game later to save releasing time.");
-            unload_one_column_from_party(env.program_info(), env.console, context, next_egg_column-1, HAS_CLONE_RIDE_POKEMON);
+            unload_one_column_from_party(env, env.console, context, NOTIFICATION_ERROR_RECOVERABLE, next_egg_column-1, HAS_CLONE_RIDE_POKEMON);
         }
 
         // Get the next egg column
         go_to_next_egg_column();
 
         if (next_egg_column < 6){
-            load_one_column_to_party(env.program_info(), env.console, context, next_egg_column, HAS_CLONE_RIDE_POKEMON);
+            load_one_column_to_party(env, env.console, context, NOTIFICATION_ERROR_RECOVERABLE, next_egg_column, HAS_CLONE_RIDE_POKEMON);
             // Move cursor to party lead so that we can examine rest of party to detect eggs.
             move_box_cursor(env.program_info(), env.console, context, BoxCursorLocation::PARTY, 0, 0);
 
@@ -476,7 +485,7 @@ void EggAutonomous::hatch_eggs_full_routine(SingleSwitchProgramEnvironment& env,
                 BoxCursorLocation::SLOTS, 0, 0);
 
             // Load rest of the fetching pokemon to party
-            load_one_column_to_party(env.program_info(), env.console, context, 1, HAS_CLONE_RIDE_POKEMON);
+            load_one_column_to_party(env, env.console, context, NOTIFICATION_ERROR_RECOVERABLE, 1, HAS_CLONE_RIDE_POKEMON);
 
             // Move back to middle box
             move_to_right_box(context);
@@ -642,13 +651,13 @@ int EggAutonomous::picnic_party_to_hatch_party(SingleSwitchProgramEnvironment& e
         BoxCursorLocation::PARTY, 0, 0);
 
     // Unload rest of party to the 2nd column (col 1) in box
-    unload_one_column_from_party(env.program_info(), env.console, context, 1, HAS_CLONE_RIDE_POKEMON);
+    unload_one_column_from_party(env, env.console, context, NOTIFICATION_ERROR_RECOVERABLE, 1, HAS_CLONE_RIDE_POKEMON);
 
     // Move to middle box
     move_to_right_box(context);
 
     // Load first egg column to party
-    load_one_column_to_party(env.program_info(), env.console, context, 0, HAS_CLONE_RIDE_POKEMON);
+    load_one_column_to_party(env, env.console, context, NOTIFICATION_ERROR_RECOVERABLE, 0, HAS_CLONE_RIDE_POKEMON);
     // Move cursor to party lead so that we can examine rest of party to detect eggs.
     move_box_cursor(env.program_info(), env.console, context, BoxCursorLocation::PARTY, 0, 0);
 
@@ -668,10 +677,10 @@ void EggAutonomous::save_game(SingleSwitchProgramEnvironment& env, BotBaseContex
         } else{
             save_game_from_menu(env.program_info(), env.console, context);
         }
-    } catch(OperationFailedException &e){
+    }catch (OperationFailedException& e){
         // To be safe: avoid interrupting or corrupting game saving,
         // make game saving non error recoverable
-        throw FatalProgramException(env.logger(), e.message());
+        throw FatalProgramException(std::move(e));
     }
 }
 
@@ -680,22 +689,23 @@ void EggAutonomous::reset_game(SingleSwitchProgramEnvironment& env, BotBaseConte
         pbf_press_button(context, BUTTON_HOME, 20, GameSettings::instance().GAME_TO_HOME_DELAY);
         context.wait_for_all_requests();
         reset_game_from_home(env.program_info(), env.console, context, 5 * TICKS_PER_SECOND);
-    } catch(OperationFailedException &e){
+    }catch (OperationFailedException& e){
         // To be safe: avoid doing anything outside of game on Switch,
         // make game resetting non error recoverable
-        throw FatalProgramException(env.logger(), e.message());
+        throw FatalProgramException(std::move(e));
     }
 }
 
 void EggAutonomous::handle_recoverable_error(
-    SingleSwitchProgramEnvironment& env,
-    BotBaseContext& context,
+    SingleSwitchProgramEnvironment& env, BotBaseContext& context,
+    EventNotificationOption& notification,
     OperationFailedException& e,
     size_t& consecutive_failures
 ){
     auto& stats = env.current_stats<EggAutonomous_Descriptor::Stats>();
     stats.m_errors++;
     env.update_stats();
+    e.send_notification(env, notification);
 
     if (SAVE_DEBUG_VIDEO){
         // Take a video to give more context for debugging
@@ -704,7 +714,7 @@ void EggAutonomous::handle_recoverable_error(
     }
     // if there is no auto save, then we shouldn't reset game to lose previous progress.
     if (AUTO_SAVING == AutoSave::NoAutoSave){
-        throw e;
+        throw std::move(e);
     }
 
     if (AUTO_SAVING == AutoSave::AfterStartAndKeep && m_in_critical_to_save_stage){
@@ -714,12 +724,12 @@ void EggAutonomous::handle_recoverable_error(
         // in this auto saving mode, every batch of eggs have been saved beforehand.
         env.log("Found an error before we can save the game to protect the newly kept pokemon.", COLOR_RED);
         env.log("Don't reset game to protect it.", COLOR_RED);
-        throw e;
+        throw std::move(e);
     }
 
     consecutive_failures++;
     if (consecutive_failures >= 3){
-        throw OperationFailedException(env.console, "Failed 3 times in the row.");
+        throw OperationFailedException(env.console, "Failed 3 times in the row.", true);
     }
 
     env.log("Reset game to handle recoverable error");

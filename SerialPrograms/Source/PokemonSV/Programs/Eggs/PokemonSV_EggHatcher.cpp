@@ -4,10 +4,9 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/FatalProgramException.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonFramework/Tools/ErrorDumper.h"
 #include "CommonFramework/Tools/StatsTracking.h"
 #include "CommonFramework/Tools/VideoResolutionCheck.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -31,7 +30,8 @@ EggHatcher_Descriptor::EggHatcher_Descriptor()
         STRING_POKEMON + " SV", "Egg Hatcher",
         "ComputerControl/blob/master/Wiki/Programs/PokemonSV/EggHatcher.md",
         "Automatically hatch eggs from boxes.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -83,6 +83,7 @@ EggHatcher::EggHatcher()
     , NOTIFICATIONS({
         &NOTIFICATION_STATUS_UPDATE,
         &NOTIFICATION_PROGRAM_FINISH,
+        &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
     })
 {
@@ -101,12 +102,11 @@ void EggHatcher::hatch_one_box(SingleSwitchProgramEnvironment& env, BotBaseConte
         {
             const uint8_t expected_empty_slots_in_party = HAS_CLONE_RIDE_POKEMON ? 4 : 5;
             if (check_empty_slots_in_party(env.program_info(), env.console, context) != expected_empty_slots_in_party){
-                dump_image(env.logger(), env.program_info(), "PartyNotEmpty", env.console.video().snapshot());
-                throw FatalProgramException(env.logger(), "party not empty when loading one column for hatching.");
+                throw FatalProgramException(env.console, "Party not empty when loading one column for hatching.", true);
             }
         }
 
-        load_one_column_to_party(env.program_info(), env.console, context, column_index, HAS_CLONE_RIDE_POKEMON);
+        load_one_column_to_party(env, env.console, context, NOTIFICATION_ERROR_RECOVERABLE, column_index, HAS_CLONE_RIDE_POKEMON);
         // Move cursor to party lead so that we can examine rest of party to detect eggs.
         move_box_cursor(env.program_info(), env.console, context, BoxCursorLocation::PARTY, 0, 0);
 
@@ -123,7 +123,7 @@ void EggHatcher::hatch_one_box(SingleSwitchProgramEnvironment& env, BotBaseConte
             // Move them back
             env.log("Only non-egg pokemon in column, move them back.");
             env.console.overlay().add_log("No egg in column", COLOR_WHITE);
-            unload_one_column_from_party(env.program_info(), env.console, context, column_index, HAS_CLONE_RIDE_POKEMON);
+            unload_one_column_from_party(env, env.console, context, NOTIFICATION_ERROR_RECOVERABLE, column_index, HAS_CLONE_RIDE_POKEMON);
             continue;
         }
         
@@ -156,11 +156,10 @@ void EggHatcher::hatch_one_box(SingleSwitchProgramEnvironment& env, BotBaseConte
 
         num_eggs = check_egg_party_column(env.program_info(), env.console, context).first;
         if (num_eggs > 0){
-            dump_image(env.logger(), env.program_info(), "EggInPartyAfterHatching", env.console.video().snapshot());
-            throw FatalProgramException(env.logger(), "detected egg in party after hatching.");
+            throw FatalProgramException(env.console, "Detected egg in party after hatching.", true);
         }
 
-        unload_one_column_from_party(env.program_info(), env.console, context, column_index, HAS_CLONE_RIDE_POKEMON);
+        unload_one_column_from_party(env, env.console, context, NOTIFICATION_ERROR_RECOVERABLE, column_index, HAS_CLONE_RIDE_POKEMON);
     }
 
     context.wait_for_all_requests();
@@ -196,10 +195,10 @@ void EggHatcher::program(SingleSwitchProgramEnvironment& env, BotBaseContext& co
 
             hatch_one_box(env, context);
         }
-    } catch(OperationFailedException& e){
+    } catch(OperationFailedException&){
         stats.m_errors++;
         env.update_stats();
-        throw e;
+        throw;
     }
 
     env.update_stats();

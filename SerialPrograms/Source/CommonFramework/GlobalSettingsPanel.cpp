@@ -107,8 +107,8 @@ GlobalSettings::GlobalSettings()
         false,
         "<b>Stats File:</b><br>Use the stats file here. Multiple instances of the program can use the same file.",
         LockWhileRunning::LOCKED,
-        "PA-Stats.txt",
-        "PA-Stats.txt"
+        "UserSettings/PA-Stats.txt",
+        "UserSettings/PA-Stats.txt"
     )
     , ALL_STATS(
         "<b>All Stats:</b><br>Include all-time stats for notifications.",

@@ -4,7 +4,8 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/FatalProgramException.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
@@ -45,7 +46,8 @@ RideCloner101_Descriptor::RideCloner101_Descriptor()
         STRING_POKEMON + " SV", "Ride Cloner (1.0.1)",
         "ComputerControl/blob/master/Wiki/Programs/PokemonSV/RideCloner-101.md",
         "Clone your ride legendary (and its item) using the add-to-party glitch.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -145,6 +147,7 @@ RideCloner101::RideCloner101()
         &NOTIFICATION_NONSHINY,
         &NOTIFICATION_SHINY,
         &NOTIFICATION_PROGRAM_FINISH,
+        &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
     })
 {
@@ -315,7 +318,7 @@ bool RideCloner101::run_post_win(
             BattleBallReader reader(console, LANGUAGE);
             int quantity = move_to_ball(reader, console, context, BALL_SELECT.slug());
             if (quantity == 0){
-                throw FatalProgramException(console.logger(), "Unable to find appropriate ball. Did you run out?");
+                throw FatalProgramException(console, "Unable to find appropriate ball. Did you run out?", true);
             }
             if (quantity < 0){
                 console.log("Unable to read ball quantity.", COLOR_RED);
@@ -375,14 +378,18 @@ bool RideCloner101::run_post_win(
                     ssf_press_button(context, BUTTON_A, A_TO_B_DELAY, 20);
                     pbf_press_button(context, BUTTON_B, 20, 230);
                 }
-            }catch (OperationFailedException&){}
+            }catch (OperationFailedException& e){
+                e.send_notification(env, NOTIFICATION_ERROR_RECOVERABLE);
+            }
             continue;
         case 7:
             console.log("Detected overworld.");
             break;
         default:
-            dump_image_and_throw_recoverable_exception(env.program_info(), console, "FailedPostRaidWin",
-                "run_post_win(): No recognized state after 60 seconds.");
+            dump_image_and_throw_recoverable_exception(
+                env.program_info(), console, "FailedPostRaidWin",
+                "run_post_win(): No recognized state after 60 seconds."
+            );
         }
         break;
     }

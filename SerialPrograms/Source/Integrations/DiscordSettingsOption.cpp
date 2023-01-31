@@ -4,17 +4,19 @@
  *
  */
 
-#include <QLabel>
-#include <QPushButton>
-#include "CommonFramework/Notifications/ProgramNotifications.h"
+#include "Common/Qt/Options/BatchWidget.h"
+#include "CommonFramework/GlobalSettingsPanel.h"
 #include "DiscordSettingsOption.h"
 
-#include <iostream>
-using std::cout;
-using std::endl;
+//#include <iostream>
+//using std::cout;
+//using std::endl;
 
 namespace PokemonAutomation{
 namespace Integration{
+
+
+
 
 
 DiscordMessageSettingsOption::DiscordMessageSettingsOption()
@@ -43,11 +45,20 @@ DiscordMessageSettingsOption::DiscordMessageSettingsOption()
 {
     PA_ADD_OPTION(instance_name);
     PA_ADD_OPTION(user_id);
-    PA_ADD_OPTION(message);
+    if (PreloadSettings::instance().DEVELOPER_MODE){
+        PA_ADD_OPTION(message);
+    }
 }
+class DiscordMessageSettingsOptionUI : public BatchWidget{
+public:
+    DiscordMessageSettingsOptionUI(QWidget& parent, DiscordMessageSettingsOption& value);
+};
 DiscordMessageSettingsOptionUI::DiscordMessageSettingsOptionUI(QWidget& parent, DiscordMessageSettingsOption& value)
     : BatchWidget(parent, value)
 {}
+ConfigWidget* DiscordMessageSettingsOption::make_QtWidget(QWidget& parent){
+    return new DiscordMessageSettingsOptionUI(parent, *this);
+}
 
 
 
@@ -59,15 +70,10 @@ DiscordSettingsOption::DiscordSettingsOption()
 {
     PA_ADD_OPTION(message);
     PA_ADD_OPTION(webhooks);
-#ifdef PA_SLEEPY
+#if defined PA_SLEEPY || defined PA_DPP
     PA_ADD_OPTION(integration);
 #endif
 }
-#if 0
-void DiscordSettingsOption::load_json(const JsonValueRef& json){
-    BatchOption::load_json(json);
-}
-#endif
 
 
 

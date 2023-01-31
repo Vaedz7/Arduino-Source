@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
@@ -29,7 +29,8 @@ ActivateMenuGlitch112_Descriptor::ActivateMenuGlitch112_Descriptor()
         "ComputerControl/blob/master/Wiki/Programs/PokemonBDSP/ActivateMenuGlitch-Poketch.md",
         "Activate the menu glitch using the Pok\u00e9tch. "
         "<font color=\"red\">(This requires game versions 1.1.0 - 1.1.2. The glitch it relies on was patched in v1.1.3.)</font>",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -67,7 +68,7 @@ void trigger_menu(ConsoleHandle& console, BotBaseContext& context){
         {{detector}}
     );
     if (ret < 0){
-        throw OperationFailedException(console, "Map not detected after 60 seconds.");
+        throw OperationFailedException(console, "Map not detected after 60 seconds.", true);
     }
     console.log("Detected map!", COLOR_BLUE);
 
@@ -98,7 +99,7 @@ void trigger_map_overlap(ConsoleHandle& console, BotBaseContext& context){
         pbf_mash_button(context, BUTTON_B, 3 * TICKS_PER_SECOND);
         pbf_press_button(context, BUTTON_R, 20, 230);
     }
-    throw OperationFailedException(console, "Failed to trigger map overlap after 10 attempts.");
+    throw OperationFailedException(console, "Failed to trigger map overlap after 10 attempts.", true);
 }
 
 
@@ -135,7 +136,7 @@ void ActivateMenuGlitch112::program(SingleSwitchProgramEnvironment& env, BotBase
             {{detector}}
         );
         if (ret < 0){
-            throw OperationFailedException(console, "Unable to leave " + STRING_POKEMON + " center.");
+            throw OperationFailedException(console, "Unable to leave " + STRING_POKEMON + " center.", true);
         }
         console.log("Leaving " + STRING_POKEMON + " center detected!", COLOR_BLUE);
     }

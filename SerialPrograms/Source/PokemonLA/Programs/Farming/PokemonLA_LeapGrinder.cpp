@@ -6,6 +6,7 @@
 
 #include "ClientSource/Connection/BotBase.h"
 #include "Common/Cpp/PrettyPrint.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/Tools/StatsTracking.h"
@@ -15,8 +16,6 @@
 #include "Pokemon/Pokemon_Strings.h"
 #include "PokemonLA/PokemonLA_Settings.h"
 #include "PokemonLA/Resources/PokemonLA_NameDatabase.h"
-#include "PokemonLA/Resources/PokemonLA_AvailablePokemon.h"
-#include "PokemonLA/Resources/PokemonLA_PokemonSprites.h"
 #include "PokemonLA/Inference/Sounds/PokemonLA_ShinySoundDetector.h"
 #include "PokemonLA/Inference/PokemonLA_OverworldDetector.h"
 #include "PokemonLA/Programs/PokemonLA_GameEntry.h"
@@ -34,7 +33,8 @@ LeapGrinder_Descriptor::LeapGrinder_Descriptor()
         STRING_POKEMON + " LA", "Leap Grinder",
         "ComputerControl/blob/master/Wiki/Programs/PokemonLA/LeapGrinder.md",
         "Shake trees and ores to grind tasks",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -124,6 +124,7 @@ LeapGrinder::LeapGrinder()
         &SHINY_DETECTED_ENROUTE.NOTIFICATIONS,
         &MATCH_DETECTED_OPTIONS.NOTIFICATIONS,
         &NOTIFICATION_PROGRAM_FINISH,
+        &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
     })
 {
@@ -268,8 +269,10 @@ void LeapGrinder::program(SingleSwitchProgramEnvironment& env, BotBaseContext& c
             if(run_iteration(env, context)){
                 break;
             }
-        }catch (OperationFailedException&){
+        }catch (OperationFailedException& e){
             stats.errors++;
+            e.send_notification(env, NOTIFICATION_ERROR_RECOVERABLE);
+
             pbf_press_button(context, BUTTON_HOME, 20, GameSettings::instance().GAME_TO_HOME_DELAY);
             reset_game_from_home(env, env.console, context, ConsoleSettings::instance().TOLERATE_SYSTEM_UPDATE_MENU_FAST);
             // Switch from items to pokemons

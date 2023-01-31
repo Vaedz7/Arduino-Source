@@ -35,9 +35,11 @@ win32-g++{
     DEFINES += PA_AutoDispatch_x64_08_Nehalem
     LIBS += ../3rdPartyBinaries/tesseractPA.lib
 
-    DEFINES += WIN32
     DEFINES += PA_SLEEPY
     LIBS += ../3rdPartyBinaries/Sleepy.lib
+
+    DEFINES += PA_DPP
+    LIBS += ../3rdPartyBinaries/dpp.lib
 }
 win32-msvc{
     QMAKE_CXXFLAGS += /std:c++latest /utf-8
@@ -52,6 +54,9 @@ win32-msvc{
 
     DEFINES += PA_SLEEPY
     LIBS += ../3rdPartyBinaries/Sleepy.lib
+
+    DEFINES += PA_DPP
+    LIBS += ../3rdPartyBinaries/dpp.lib
 
     LIBS += ../3rdPartyBinaries/opencv_world460.lib
 }
@@ -164,6 +169,10 @@ SOURCES += \
     Source/CommonFramework/CrashDump.cpp \
     Source/CommonFramework/Environment/Environment.cpp \
     Source/CommonFramework/Environment/HardwareValidation.cpp \
+    Source/CommonFramework/Exceptions/FatalProgramException.cpp \
+    Source/CommonFramework/Exceptions/OperationFailedException.cpp \
+    Source/CommonFramework/Exceptions/ProgramFinishedException.cpp \
+    Source/CommonFramework/Exceptions/ScreenshotException.cpp \
     Source/CommonFramework/GlobalSettingsPanel.cpp \
     Source/CommonFramework/Globals.cpp \
     Source/CommonFramework/ImageMatch/CroppedImageDictionaryMatcher.cpp \
@@ -271,7 +280,7 @@ SOURCES += \
     Source/CommonFramework/VideoPipeline/Backends/CameraWidgetQt6.cpp \
     Source/CommonFramework/VideoPipeline/Backends/VideoToolsQt5.cpp \
     Source/CommonFramework/VideoPipeline/CameraOption.cpp \
-    Source/CommonFramework/VideoPipeline/ThreadUtilizationStats.cpp \
+    Source/CommonFramework/VideoPipeline/Stats/ThreadUtilizationStats.cpp \
     Source/CommonFramework/VideoPipeline/UI/CameraSelectorWidget.cpp \
     Source/CommonFramework/VideoPipeline/UI/VideoDisplayWidget.cpp \
     Source/CommonFramework/VideoPipeline/UI/VideoDisplayWindow.cpp \
@@ -295,6 +304,9 @@ SOURCES += \
     Source/Integrations/IntegrationsAPI.cpp \
     Source/Integrations/ProgramTracker.cpp \
     Source/Integrations/SleepyDiscordRunner.cpp \
+    Source/Integrations/DppIntegration/DppClient.cpp \
+    Source/Integrations/DppIntegration/DppUtility.cpp \
+    Source/Integrations/DppIntegration/DppCommandHandler.cpp \
     Source/Kernels/AbsFFT/Kernels_AbsFFT.cpp \
     Source/Kernels/AbsFFT/Kernels_AbsFFT_Core_Default.cpp \
     Source/Kernels/AbsFFT/Kernels_AbsFFT_Core_x86_AVX2.cpp \
@@ -408,6 +420,7 @@ SOURCES += \
     Source/Pokemon/Inference/Pokemon_BoxGenderDetector.cpp \
     Source/Pokemon/Inference/Pokemon_IVCheckerReader.cpp \
     Source/Pokemon/Inference/Pokemon_NameReader.cpp \
+    Source/Pokemon/Inference/Pokemon_NatureReader.cpp \
     Source/Pokemon/Inference/Pokemon_PokeballNameReader.cpp \
     Source/Pokemon/Inference/Pokemon_TrainIVCheckerOCR.cpp \
     Source/Pokemon/Inference/Pokemon_TrainPokemonOCR.cpp \
@@ -415,8 +428,10 @@ SOURCES += \
     Source/Pokemon/Options/Pokemon_IVCheckerOption.cpp \
     Source/Pokemon/Options/Pokemon_NameSelectOption.cpp \
     Source/Pokemon/Options/Pokemon_NameSelectWidget.cpp \
+    Source/Pokemon/Options/Pokemon_StatsResetFilter.cpp \
     Source/Pokemon/Pokemon_EncounterStats.cpp \
     Source/Pokemon/Pokemon_IVChecker.cpp \
+    Source/Pokemon/Pokemon_NatureChecker.cpp \
     Source/Pokemon/Pokemon_Notification.cpp \
     Source/Pokemon/Pokemon_ShinySparkleSet.cpp \
     Source/Pokemon/Pokemon_Strings.cpp \
@@ -433,6 +448,7 @@ SOURCES += \
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_StartBattleDetector.cpp \
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxDetector.cpp \
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxGenderDetector.cpp \
+    Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxNatureDetector.cpp \
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxShinyDetector.cpp \
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_IVCheckerReader.cpp \
     Source/PokemonBDSP/Inference/PokemonBDSP_DialogDetector.cpp \
@@ -603,8 +619,10 @@ SOURCES += \
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxDetection.cpp \
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxEggDetector.cpp \
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxGenderDetector.cpp \
+    Source/PokemonSV/Inference/Boxes/PokemonSV_BoxNatureDetector.cpp \
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxShinyDetector.cpp \
     Source/PokemonSV/Inference/Boxes/PokemonSV_IVCheckerReader.cpp \
+    Source/PokemonSV/Inference/Boxes/PokemonSV_StatsResetChecker.cpp \
     Source/PokemonSV/Inference/Dialogs/PokemonSV_DialogArrowDetector.cpp \
     Source/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.cpp \
     Source/PokemonSV/Inference/Dialogs/PokemonSV_GradientArrowDetector.cpp \
@@ -623,6 +641,7 @@ SOURCES += \
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraCardDetector.cpp \
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraCodeReader.cpp \
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraRaidSearchDetector.cpp \
+    Source/PokemonSV/Inference/Tera/PokemonSV_TeraRewardsReader.cpp \
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraSilhouetteReader.cpp \
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraTypeReader.cpp \
     Source/PokemonSV/Options/PokemonSV_AuctionItemSelectOption.cpp \
@@ -638,29 +657,31 @@ SOURCES += \
     Source/PokemonSV/Programs/Eggs/PokemonSV_EggFetcher.cpp \
     Source/PokemonSV/Programs/Eggs/PokemonSV_EggHatcher.cpp \
     Source/PokemonSV/Programs/Eggs/PokemonSV_EggRoutines.cpp \
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_ClipboardFastCodeEntry.cpp \
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_CodeEntry.cpp \
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_FastCodeEntry.cpp \
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_VideoFastCodeEntry.cpp \
     Source/PokemonSV/Programs/General/PokemonSV_AuctionFarmer.cpp \
     Source/PokemonSV/Programs/General/PokemonSV_AutonomousBallThrower.cpp \
     Source/PokemonSV/Programs/General/PokemonSV_ESPTraining.cpp \
     Source/PokemonSV/Programs/General/PokemonSV_GimmighoulChestFarmer.cpp \
     Source/PokemonSV/Programs/General/PokemonSV_GimmighoulRoamingFarmer.cpp \
+    Source/PokemonSV/Programs/General/PokemonSV_LPFarmer.cpp \
     Source/PokemonSV/Programs/General/PokemonSV_MassPurchase.cpp \
     Source/PokemonSV/Programs/General/PokemonSV_MassRelease.cpp \
     Source/PokemonSV/Programs/General/PokemonSV_StatsReset.cpp \
     Source/PokemonSV/Programs/Glitches/PokemonSV_CloneItems-1.0.1.cpp \
     Source/PokemonSV/Programs/Glitches/PokemonSV_RideCloner-1.0.1.cpp \
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_AutoHost.cpp \
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_AutoHostLobbyWaiter.cpp \
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_ClipboardFastCodeEntry.cpp \
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_FastCodeEntry.cpp \
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_JoinTracker.cpp \
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_VideoFastCodeEntry.cpp \
     Source/PokemonSV/Programs/PokemonSV_BasicCatcher.cpp \
-    Source/PokemonSV/Programs/PokemonSV_CodeEntry.cpp \
     Source/PokemonSV/Programs/PokemonSV_ConnectToInternet.cpp \
     Source/PokemonSV/Programs/PokemonSV_GameEntry.cpp \
     Source/PokemonSV/Programs/PokemonSV_Navigation.cpp \
     Source/PokemonSV/Programs/PokemonSV_SaveGame.cpp \
     Source/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichRoutines.cpp \
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_AutoHost.cpp \
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_AutoHostLobbyWaiter.cpp \
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_AutoHostTools.cpp \
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_JoinTracker.cpp \
     Source/PokemonSV/Programs/TeraRaids/PokemonSV_TeraBattler.cpp \
     Source/PokemonSV/Programs/TeraRaids/PokemonSV_TeraMultiFarmer.cpp \
     Source/PokemonSV/Programs/TeraRaids/PokemonSV_TeraRoutines.cpp \
@@ -687,6 +708,7 @@ SOURCES += \
     Source/PokemonSwSh/Inference/Dens/PokemonSwSh_RaidCatchDetector.cpp \
     Source/PokemonSwSh/Inference/Dens/PokemonSwSh_RaidLobbyReader.cpp \
     Source/PokemonSwSh/Inference/PokemonSwSh_BoxGenderDetector.cpp \
+    Source/PokemonSwSh/Inference/PokemonSwSh_BoxNatureDetector.cpp \
     Source/PokemonSwSh/Inference/PokemonSwSh_BoxShinySymbolDetector.cpp \
     Source/PokemonSwSh/Inference/PokemonSwSh_DialogBoxDetector.cpp \
     Source/PokemonSwSh/Inference/PokemonSwSh_FishingDetector.cpp \
@@ -869,6 +891,70 @@ HEADERS += \
     ../3rdParty/QtWavFile/WavFile.h \
     ../3rdParty/TesseractPA/TesseractPA.h \
     ../3rdParty/nlohmann/json.hpp \
+    ../3rdParty/dpp/appcommand.h \
+    ../3rdParty/dpp/application.h \
+    ../3rdParty/dpp/auditlog.h \
+    ../3rdParty/dpp/automod.h \
+    ../3rdParty/dpp/ban.h \
+    ../3rdParty/dpp/cache.h \
+    ../3rdParty/dpp/channel.h \
+    ../3rdParty/dpp/cluster.h \
+    ../3rdParty/dpp/cluster_coro_calls.h \
+    ../3rdParty/dpp/cluster_sync_calls.h \
+    ../3rdParty/dpp/collector.h \
+    ../3rdParty/dpp/colors.h \
+    ../3rdParty/dpp/commandhandler.h \
+    ../3rdParty/dpp/coro.h \
+    ../3rdParty/dpp/discordclient.h \
+    ../3rdParty/dpp/discordevents.h \
+    ../3rdParty/dpp/discordvoiceclient.h \
+    ../3rdParty/dpp/dispatcher.h \
+    ../3rdParty/dpp/dns.h \
+    ../3rdParty/dpp/dpp.h \
+    ../3rdParty/dpp/dtemplate.h \
+    ../3rdParty/dpp/emoji.h \
+    ../3rdParty/dpp/etf.h \
+    ../3rdParty/dpp/event.h \
+    ../3rdParty/dpp/event_router.h \
+    ../3rdParty/dpp/exception.h \
+    ../3rdParty/dpp/export.h \
+    ../3rdParty/dpp/guild.h \
+    ../3rdParty/dpp/httpsclient.h \
+    ../3rdParty/dpp/integration.h \
+    ../3rdParty/dpp/intents.h \
+    ../3rdParty/dpp/invite.h \
+    ../3rdParty/dpp/json_interface.h \
+    ../3rdParty/dpp/managed.h \
+    ../3rdParty/dpp/message.h \
+    ../3rdParty/dpp/misc-enum.h \
+    ../3rdParty/dpp/once.h \
+    ../3rdParty/dpp/permissions.h \
+    ../3rdParty/dpp/presence.h \
+    ../3rdParty/dpp/prune.h \
+    ../3rdParty/dpp/queues.h \
+    ../3rdParty/dpp/restrequest.h \
+    ../3rdParty/dpp/restresults.h \
+    ../3rdParty/dpp/role.h \
+    ../3rdParty/dpp/scheduled_event.h \
+    ../3rdParty/dpp/snowflake.h \
+    ../3rdParty/dpp/socket.h \
+    ../3rdParty/dpp/sslclient.h \
+    ../3rdParty/dpp/stage_instance.h \
+    ../3rdParty/dpp/stringops.h \
+    ../3rdParty/dpp/sync.h \
+    ../3rdParty/dpp/sysdep.h \
+    ../3rdParty/dpp/timed_listener.h \
+    ../3rdParty/dpp/timer.h \
+    ../3rdParty/dpp/user.h \
+    ../3rdParty/dpp/utility.h \
+    ../3rdParty/dpp/version.h \
+    ../3rdParty/dpp/voiceregion.h \
+    ../3rdParty/dpp/voicestate.h \
+    ../3rdParty/dpp/webhook.h \
+    ../3rdParty/dpp/win32_safe_warnings.h \
+    ../3rdParty/dpp/wsclient.h \
+    ../3rdParty/dpp/nlohmann/json.hpp \
+    ../3rdParty/dpp/nlohmann/json_fwd.hpp \
     ../ClientSource/Connection/BotBase.h \
     ../ClientSource/Connection/BotBaseMessage.h \
     ../ClientSource/Connection/MessageLogger.h \
@@ -1026,6 +1112,10 @@ HEADERS += \
     Source/CommonFramework/Environment/HardwareValidation.h \
     Source/CommonFramework/Environment/HardwareValidation_arm64.tpp \
     Source/CommonFramework/Environment/HardwareValidation_x86.tpp \
+    Source/CommonFramework/Exceptions/FatalProgramException.h \
+    Source/CommonFramework/Exceptions/OperationFailedException.h \
+    Source/CommonFramework/Exceptions/ProgramFinishedException.h \
+    Source/CommonFramework/Exceptions/ScreenshotException.h \
     Source/CommonFramework/GlobalSettingsPanel.h \
     Source/CommonFramework/Globals.h \
     Source/CommonFramework/ImageMatch/CroppedImageDictionaryMatcher.h \
@@ -1144,7 +1234,8 @@ HEADERS += \
     Source/CommonFramework/VideoPipeline/CameraInfo.h \
     Source/CommonFramework/VideoPipeline/CameraOption.h \
     Source/CommonFramework/VideoPipeline/CameraSession.h \
-    Source/CommonFramework/VideoPipeline/ThreadUtilizationStats.h \
+    Source/CommonFramework/VideoPipeline/Stats/CpuUtilizationStats.h \
+    Source/CommonFramework/VideoPipeline/Stats/ThreadUtilizationStats.h \
     Source/CommonFramework/VideoPipeline/UI/CameraSelectorWidget.h \
     Source/CommonFramework/VideoPipeline/UI/VideoDisplayWidget.h \
     Source/CommonFramework/VideoPipeline/UI/VideoDisplayWindow.h \
@@ -1173,6 +1264,9 @@ HEADERS += \
     Source/Integrations/ProgramTracker.h \
     Source/Integrations/ProgramTrackerInterfaces.h \
     Source/Integrations/SleepyDiscordRunner.h \
+    Source/Integrations/DppIntegration/DppClient.h \
+    Source/Integrations/DppIntegration/DppUtility.h \
+    Source/Integrations/DppIntegration/DppCommandHandler.h \
     Source/Kernels/AbsFFT/Kernels_AbsFFT.h \
     Source/Kernels/AbsFFT/Kernels_AbsFFT_Arch.h \
     Source/Kernels/AbsFFT/Kernels_AbsFFT_Arch_Default.h \
@@ -1303,6 +1397,7 @@ HEADERS += \
     Source/Pokemon/Inference/Pokemon_BoxGenderDetector.h \
     Source/Pokemon/Inference/Pokemon_IVCheckerReader.h \
     Source/Pokemon/Inference/Pokemon_NameReader.h \
+    Source/Pokemon/Inference/Pokemon_NatureReader.h \
     Source/Pokemon/Inference/Pokemon_PokeballNameReader.h \
     Source/Pokemon/Inference/Pokemon_TrainIVCheckerOCR.h \
     Source/Pokemon/Inference/Pokemon_TrainPokemonOCR.h \
@@ -1311,9 +1406,11 @@ HEADERS += \
     Source/Pokemon/Options/Pokemon_IVCheckerOption.h \
     Source/Pokemon/Options/Pokemon_NameSelectOption.h \
     Source/Pokemon/Options/Pokemon_NameSelectWidget.h \
+    Source/Pokemon/Options/Pokemon_StatsResetFilter.h \
     Source/Pokemon/Pokemon_DataTypes.h \
     Source/Pokemon/Pokemon_EncounterStats.h \
     Source/Pokemon/Pokemon_IVChecker.h \
+    Source/Pokemon/Pokemon_NatureChecker.h \
     Source/Pokemon/Pokemon_Notification.h \
     Source/Pokemon/Pokemon_ShinySparkleSet.h \
     Source/Pokemon/Pokemon_Strings.h \
@@ -1330,6 +1427,7 @@ HEADERS += \
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_StartBattleDetector.h \
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxDetector.h \
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxGenderDetector.h \
+    Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxNatureDetector.h \
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxShinyDetector.h \
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_IVCheckerReader.h \
     Source/PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h \
@@ -1502,8 +1600,10 @@ HEADERS += \
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxDetection.h \
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxEggDetector.h \
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxGenderDetector.h \
+    Source/PokemonSV/Inference/Boxes/PokemonSV_BoxNatureDetector.h \
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxShinyDetector.h \
     Source/PokemonSV/Inference/Boxes/PokemonSV_IVCheckerReader.h \
+    Source/PokemonSV/Inference/Boxes/PokemonSV_StatsResetChecker.h \
     Source/PokemonSV/Inference/Dialogs/PokemonSV_DialogArrowDetector.h \
     Source/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h \
     Source/PokemonSV/Inference/Dialogs/PokemonSV_GradientArrowDetector.h \
@@ -1522,10 +1622,12 @@ HEADERS += \
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraCardDetector.h \
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraCodeReader.h \
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraRaidSearchDetector.h \
+    Source/PokemonSV/Inference/Tera/PokemonSV_TeraRewardsReader.h \
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraSilhouetteReader.h \
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraTypeReader.h \
     Source/PokemonSV/Options/PokemonSV_AuctionItemSelectOption.h \
     Source/PokemonSV/Options/PokemonSV_AuctionItemTable.h \
+    Source/PokemonSV/Options/PokemonSV_AutoHostOptions.h \
     Source/PokemonSV/Options/PokemonSV_EggPowerSandwichOption.h \
     Source/PokemonSV/Options/PokemonSV_PlayerList.h \
     Source/PokemonSV/Options/PokemonSV_TeraAIOption.h \
@@ -1537,29 +1639,31 @@ HEADERS += \
     Source/PokemonSV/Programs/Eggs/PokemonSV_EggFetcher.h \
     Source/PokemonSV/Programs/Eggs/PokemonSV_EggHatcher.h \
     Source/PokemonSV/Programs/Eggs/PokemonSV_EggRoutines.h \
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_ClipboardFastCodeEntry.h \
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_CodeEntry.h \
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_FastCodeEntry.h \
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_VideoFastCodeEntry.h \
     Source/PokemonSV/Programs/General/PokemonSV_AuctionFarmer.h \
     Source/PokemonSV/Programs/General/PokemonSV_AutonomousBallThrower.h \
     Source/PokemonSV/Programs/General/PokemonSV_ESPTraining.h \
     Source/PokemonSV/Programs/General/PokemonSV_GimmighoulChestFarmer.h \
     Source/PokemonSV/Programs/General/PokemonSV_GimmighoulRoamingFarmer.h \
+    Source/PokemonSV/Programs/General/PokemonSV_LPFarmer.h \
     Source/PokemonSV/Programs/General/PokemonSV_MassPurchase.h \
     Source/PokemonSV/Programs/General/PokemonSV_MassRelease.h \
     Source/PokemonSV/Programs/General/PokemonSV_StatsReset.h \
     Source/PokemonSV/Programs/Glitches/PokemonSV_CloneItems-1.0.1.h \
     Source/PokemonSV/Programs/Glitches/PokemonSV_RideCloner-1.0.1.h \
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_AutoHost.h \
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_AutoHostLobbyWaiter.h \
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_ClipboardFastCodeEntry.h \
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_FastCodeEntry.h \
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_JoinTracker.h \
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_VideoFastCodeEntry.h \
     Source/PokemonSV/Programs/PokemonSV_BasicCatcher.h \
-    Source/PokemonSV/Programs/PokemonSV_CodeEntry.h \
     Source/PokemonSV/Programs/PokemonSV_ConnectToInternet.h \
     Source/PokemonSV/Programs/PokemonSV_GameEntry.h \
     Source/PokemonSV/Programs/PokemonSV_Navigation.h \
     Source/PokemonSV/Programs/PokemonSV_SaveGame.h \
     Source/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichRoutines.h \
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_AutoHost.h \
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_AutoHostLobbyWaiter.h \
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_AutoHostTools.h \
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_JoinTracker.h \
     Source/PokemonSV/Programs/TeraRaids/PokemonSV_TeraBattler.h \
     Source/PokemonSV/Programs/TeraRaids/PokemonSV_TeraMultiFarmer.h \
     Source/PokemonSV/Programs/TeraRaids/PokemonSV_TeraRoutines.h \
@@ -1592,6 +1696,7 @@ HEADERS += \
     Source/PokemonSwSh/Inference/Dens/PokemonSwSh_RaidCatchDetector.h \
     Source/PokemonSwSh/Inference/Dens/PokemonSwSh_RaidLobbyReader.h \
     Source/PokemonSwSh/Inference/PokemonSwSh_BoxGenderDetector.h \
+    Source/PokemonSwSh/Inference/PokemonSwSh_BoxNatureDetector.h \
     Source/PokemonSwSh/Inference/PokemonSwSh_BoxShinySymbolDetector.h \
     Source/PokemonSwSh/Inference/PokemonSwSh_DialogBoxDetector.h \
     Source/PokemonSwSh/Inference/PokemonSwSh_FishingDetector.h \
@@ -1772,7 +1877,8 @@ HEADERS += \
     Source/Tests/PokemonSV_Tests.h \
     Source/Tests/PokemonSwSh_Tests.h \
     Source/Tests/TestMap.h \
-    Source/Tests/TestUtils.h
+    Source/Tests/TestUtils.h \
+
 
 
 

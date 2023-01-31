@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -103,7 +103,8 @@ void change_mount(ConsoleHandle& console, BotBaseContext& context, MountState mo
 
     throw OperationFailedException(
         console,
-        std::string("Unable to find ") + MOUNT_STATE_STRINGS[(size_t)mount] + " after 10 attempts."
+        std::string("Unable to find ") + MOUNT_STATE_STRINGS[(size_t)mount] + " after 10 attempts.",
+        true
     );
 }
 
@@ -134,7 +135,7 @@ void dismount(ConsoleHandle& console, BotBaseContext& context){
         pbf_press_button(context, BUTTON_PLUS, 20, 105);
     }
 
-    throw OperationFailedException(console, "Unable to dismount after 10 attempts.");
+    throw OperationFailedException(console, "Unable to dismount after 10 attempts.", true);
 }
 
 

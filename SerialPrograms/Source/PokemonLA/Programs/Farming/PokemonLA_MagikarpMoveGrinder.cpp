@@ -6,26 +6,20 @@
 
 #include <chrono>
 #include <iostream>
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
 #include "CommonFramework/Tools/StatsTracking.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "NintendoSwitch/NintendoSwitch_Settings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/Pokemon_Strings.h"
-#include "PokemonLA/PokemonLA_Settings.h"
 #include "PokemonLA/Inference/Battles/PokemonLA_BattleMenuDetector.h"
 #include "PokemonLA/Inference/Battles/PokemonLA_BattlePokemonSwitchDetector.h"
 #include "PokemonLA/Programs/PokemonLA_BattleRoutines.h"
-#include "PokemonLA/Programs/PokemonLA_GameEntry.h"
 #include "PokemonLA_MagikarpMoveGrinder.h"
 #include "PokemonLA/Inference/Objects/PokemonLA_ArcPhoneDetector.h"
-#include "PokemonLA/Inference/Objects/PokemonLA_DialogueEllipseDetector.h"
-#include "PokemonLA/Inference/PokemonLA_DialogDetector.h"
-
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -39,7 +33,8 @@ MagikarpMoveGrinder_Descriptor::MagikarpMoveGrinder_Descriptor()
         STRING_POKEMON + " LA", "Magikarp Move Grinder",
         "ComputerControl/blob/master/Wiki/Programs/PokemonLA/MagikarpMoveGrinder.md",
         "grind status moves with any style against a Magikarp to finish " + STRING_POKEDEX + " research tasks.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -112,7 +107,7 @@ void MagikarpMoveGrinder::grind_mimic(SingleSwitchProgramEnvironment& env, BotBa
         if (ret < 0){
             env.console.log("Error: Failed to find battle menu after 2 minutes.");
             dump_image(env.logger(), env.program_info(), "BattleMenuNotFound", env.console.video().snapshot());
-            throw OperationFailedException(env.console, "Failed to find battle menu after 2 minutes.");
+            throw OperationFailedException(env.console, "Failed to find battle menu after 2 minutes.", true);
         }
 
         if (ret == 0){
@@ -182,7 +177,7 @@ void MagikarpMoveGrinder::battle_magikarp(SingleSwitchProgramEnvironment& env, B
         if (ret < 0){
             env.console.log("Error: Failed to find battle menu after 2 minutes.");
             dump_image(env.logger(), env.program_info(), "BattleMenuNotFound", env.console.video().snapshot());
-            throw OperationFailedException(env.console, "Failed to find battle menu after 2 minutes.");
+            throw OperationFailedException(env.console, "Failed to find battle menu after 2 minutes.", true);
         }
 
         if (ret == 0){
@@ -239,7 +234,7 @@ void MagikarpMoveGrinder::program(SingleSwitchProgramEnvironment& env, BotBaseCo
     MagikarpMoveGrinder_Descriptor::Stats& stats = env.current_stats<MagikarpMoveGrinder_Descriptor::Stats>();
 
     if (POKEMON_ACTIONS.num_pokemon() == 0){
-        throw OperationFailedException(env.console, "No Pokemon sepecified to grind.");
+        throw UserSetupError(env.console, "No Pokemon sepecified to grind.");
     }
 
     //  Connect the controller.

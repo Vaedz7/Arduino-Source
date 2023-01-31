@@ -5,8 +5,8 @@
  */
 
 #include <cmath>
-#include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
@@ -21,6 +21,7 @@
 #include "PokemonSwSh/Inference/PokemonSwSh_BoxShinySymbolDetector.h"
 #include "PokemonSwSh/Inference/PokemonSwSh_DialogBoxDetector.h"
 #include "PokemonSwSh/Inference/PokemonSwSh_IVCheckerReader.h"
+#include "PokemonSwSh/Inference/PokemonSwSh_BoxNatureDetector.h"
 #include "PokemonSwSh/Inference/PokemonSwSh_SelectionArrowFinder.h"
 #include "PokemonSwSh/Inference/PokemonSwSh_YCommDetector.h"
 #include "PokemonSwSh/Programs/PokemonSwSh_GameEntry.h"
@@ -53,7 +54,8 @@ EggAutonomous_Descriptor::EggAutonomous_Descriptor()
         STRING_POKEMON + " SwSh", "Egg Autonomous",
         "ComputerControl/blob/master/Wiki/Programs/PokemonSwSh/EggAutonomous.md",
         "Automatically fetch+hatch eggs and keep all shinies.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_31KB
     )
 {}
@@ -234,6 +236,7 @@ void EggAutonomous::program(SingleSwitchProgramEnvironment& env, BotBaseContext&
         }catch (OperationFailedException& e){
             stats.m_errors++;
             env.update_stats();
+            e.send_notification(env, NOTIFICATION_ERROR_RECOVERABLE);
             
             if (SAVE_DEBUG_VIDEO){
                 // Take a video to give more context for debugging
@@ -243,12 +246,12 @@ void EggAutonomous::program(SingleSwitchProgramEnvironment& env, BotBaseContext&
 
             // If there is no auto save, then we shouldn't reset to game to lose previous progress.
             if (AUTO_SAVING == AutoSave::NoAutoSave){
-                throw e;
+                throw;
             }
 
             consecutive_failures++;
             if (consecutive_failures >= 3){
-                throw OperationFailedException(env.console, "Failed 3 batches in the row.");
+                throw OperationFailedException(env.console, "Failed 3 batches in the row.", true);
             }
             pbf_press_button(context, BUTTON_HOME, 10, GameSettings::instance().GAME_TO_HOME_DELAY_SAFE);
             env.console.overlay().add_log("Reset game", COLOR_WHITE);
@@ -569,6 +572,7 @@ bool EggAutonomous::process_hatched_pokemon(SingleSwitchProgramEnvironment& env,
         BoxGenderDetector gender_detector;
         gender_detector.make_overlays(overlay_set);
         IVCheckerReaderScope iv_reader(env.console.overlay(), LANGUAGE);
+        BoxNatureDetector nature_detector(env.console.overlay());
 
         for (size_t i_hatched = 0; i_hatched < 5; i_hatched++){
             pbf_wait(context, 50); // wait for a while to make sure the pokemon stats are loaded.
@@ -599,8 +603,9 @@ bool EggAutonomous::process_hatched_pokemon(SingleSwitchProgramEnvironment& env,
             EggHatchGenderFilter gender = gender_detector.detect(screen);
             env.log(IVs.to_string(), COLOR_GREEN);
             env.log("Gender: " + gender_to_string(gender), COLOR_GREEN);
+            NatureReader::Results nature = nature_detector.read(env.console.logger(), screen);
 
-            EggHatchAction action = FILTERS.get_action(shiny, IVs, gender);
+            EggHatchAction action = FILTERS.get_action(shiny, IVs, gender, nature);
 
             auto send_keep_notification = [&](){
                 if (!shiny){

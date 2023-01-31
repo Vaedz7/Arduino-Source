@@ -7,6 +7,8 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Containers/FixedLimitVector.tpp"
 #include "CommonFramework/GlobalSettingsPanel.h"
+#include "CommonFramework/Exceptions/ProgramFinishedException.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramInfo.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/Tools/BlackBorderCheck.h"
@@ -19,11 +21,11 @@ namespace NintendoSwitch{
 
 
 void MultiSwitchProgramSession::add_listener(Listener& listener){
-    std::lock_guard<std::mutex> lg(m_lock);
+    SpinLockGuard lg(m_lock);
     m_listeners.insert(&listener);
 }
 void MultiSwitchProgramSession::remove_listener(Listener& listener){
-    std::lock_guard<std::mutex> lg(m_lock);
+    SpinLockGuard lg(m_lock);
     m_listeners.erase(&listener);
 }
 
@@ -35,7 +37,7 @@ MultiSwitchProgramSession::MultiSwitchProgramSession(MultiSwitchProgramOption& o
     , m_option(option)
     , m_system(option.system(), instance_id())
 {
-    std::unique_lock<std::mutex> lg(m_lock);
+    SpinLockGuard lg(m_lock);
     m_system.add_listener(*this);
     m_option.instance().update_active_consoles(option.system().count());
 }
@@ -63,7 +65,7 @@ std::string MultiSwitchProgramSession::check_validity() const{
 
 
 
-void MultiSwitchProgramSession::run_program_instance(const ProgramInfo& info){
+void MultiSwitchProgramSession::run_program_instance(MultiSwitchProgramEnvironment& env, CancellableScope& scope){
     {
         std::lock_guard<std::mutex> lg(program_lock());
         std::string error = check_validity();
@@ -72,69 +74,37 @@ void MultiSwitchProgramSession::run_program_instance(const ProgramInfo& info){
         }
     }
 
-    //  Acquire lock here to block the session from changing the # of consoles.
-    std::unique_lock<std::mutex> lg(m_lock);
-
     size_t consoles = m_system.count();
     for (size_t c = 0; c < consoles; c++){
         if (!m_system[c].serial_session().is_ready()){
             throw UserSetupError(m_system[c].logger(), "Cannot Start: Serial connection not ready.");
         }
+        start_program_video_check(env.consoles[c], m_option.descriptor().feedback());
     }
 
-    FixedLimitVector<ConsoleHandle> handles(consoles);
-    for (size_t c = 0; c < consoles; c++){
-        SwitchSystemSession& session = m_system[c];
-        handles.emplace_back(
-            c,
-            session.logger(),
-            *session.sender().botbase(),
-            session.video(),
-            session.overlay(),
-            session.audio()
-        );
-        start_program_video_check(handles.back(), m_option.descriptor().feedback());
+    {
+        SpinLockGuard lg(m_lock);
+        m_scope = &scope;
     }
-
-
-    CancellableHolder<CancellableScope> scope;
-    std::unique_ptr<MultiSwitchProgramEnvironment> env(new MultiSwitchProgramEnvironment(
-        info,
-        scope,
-        *this,
-        current_stats_tracker(), historical_stats_tracker(),
-        std::move(handles)
-    ));
-
-    m_scope = &scope;
-
-    //  Now we can safely unlock.
-    //  If the session changes the # of switches here, it will safely fall
-    //  through the regular cancellation path.
-    lg.unlock();
-
 
     try{
-        m_option.instance().program(*env, scope);
+        m_option.instance().program(env, scope);
     }catch (...){
-        lg.lock();
+        SpinLockGuard lg(m_lock);
         m_scope = nullptr;
-        m_cv.notify_all();
         throw;
     }
-    lg.lock();
+    SpinLockGuard lg(m_lock);
     m_scope = nullptr;
-    m_cv.notify_all();
 }
 void MultiSwitchProgramSession::internal_stop_program(){
-    std::unique_lock<std::mutex> lg(m_lock);
+    SpinLockGuard lg(m_lock);
     size_t consoles = m_system.count();
     for (size_t c = 0; c < consoles; c++){
         m_system[c].serial_session().stop();
     }
     if (m_scope != nullptr){
         m_scope->cancel(std::make_exception_ptr(ProgramCancelledException()));
-        m_cv.wait(lg, [this]{ return m_scope == nullptr; });
     }
     for (size_t c = 0; c < consoles; c++){
         m_system[c].serial_session().reset();
@@ -144,6 +114,9 @@ void MultiSwitchProgramSession::internal_run_program(){
     GlobalSettings::instance().REALTIME_THREAD_PRIORITY0.set_on_this_thread();
     m_option.options().reset_state();
 
+    //  Lock the system to prevent the # of Switches from changing.
+    std::lock_guard<MultiSwitchSystemSession> lg(m_system);
+
     ProgramInfo program_info(
         identifier(),
         m_option.descriptor().category(),
@@ -151,23 +124,49 @@ void MultiSwitchProgramSession::internal_run_program(){
         timestamp()
     );
 
+    size_t consoles = m_system.count();
+    FixedLimitVector<ConsoleHandle> handles(consoles);
+    for (size_t c = 0; c < consoles; c++){
+        SwitchSystemSession& session = m_system[c];
+        handles.emplace_back(
+            c,
+            session.logger(),
+            session.sender().botbase(),
+            session.video(),
+            session.overlay(),
+            session.audio()
+        );
+    }
+
+
+    CancellableHolder<CancellableScope> scope;
+    MultiSwitchProgramEnvironment env(
+        program_info,
+        scope,
+        *this,
+        current_stats_tracker(), historical_stats_tracker(),
+        std::move(handles)
+    );
+
     try{
         logger().log("<b>Starting Program: " + identifier() + "</b>");
-        run_program_instance(program_info);
+        run_program_instance(env, scope);
 //        m_setup->wait_for_all_requests();
         logger().log("Program finished normally!", COLOR_BLUE);
     }catch (OperationCancelledException&){
     }catch (ProgramCancelledException&){
-    }catch (ProgramFinishedException&){
+    }catch (ProgramFinishedException& e){
         logger().log("Program finished early!", COLOR_BLUE);
-        send_program_finished_notification(
-            logger(), m_option.instance().NOTIFICATION_PROGRAM_FINISH,
-            program_info,
-            "",
-            current_stats_tracker(),
-            historical_stats_tracker()
-        );
+        e.send_notification(env, m_option.instance().NOTIFICATION_PROGRAM_FINISH);
     }catch (InvalidConnectionStateException&){
+    }catch (OperationFailedException& e){
+        logger().log("Program stopped with an exception!", COLOR_RED);
+        std::string message = e.message();
+        if (message.empty()){
+            message = e.name();
+        }
+        report_error(message);
+        e.send_notification(env, m_option.instance().NOTIFICATION_ERROR_FATAL);
     }catch (Exception& e){
         logger().log("Program stopped with an exception!", COLOR_RED);
         std::string message = e.message();
@@ -176,11 +175,8 @@ void MultiSwitchProgramSession::internal_run_program(){
         }
         report_error(message);
         send_program_fatal_error_notification(
-            logger(), m_option.instance().NOTIFICATION_ERROR_FATAL,
-            program_info,
-            std::move(message),
-            current_stats_tracker(),
-            historical_stats_tracker()
+            env, m_option.instance().NOTIFICATION_ERROR_FATAL,
+            message
         );
     }catch (std::exception& e){
         logger().log("Program stopped with an exception!", COLOR_RED);
@@ -190,21 +186,15 @@ void MultiSwitchProgramSession::internal_run_program(){
         }
         report_error(message);
         send_program_fatal_error_notification(
-            logger(), m_option.instance().NOTIFICATION_ERROR_FATAL,
-            program_info,
-            std::move(message),
-            current_stats_tracker(),
-            historical_stats_tracker()
+            env, m_option.instance().NOTIFICATION_ERROR_FATAL,
+            message
         );
     }catch (...){
         logger().log("Program stopped with an exception!", COLOR_RED);
         report_error("Unknown error.");
         send_program_fatal_error_notification(
-            logger(), m_option.instance().NOTIFICATION_ERROR_FATAL,
-            program_info,
-            "Unknown error.",
-            current_stats_tracker(),
-            historical_stats_tracker()
+            env, m_option.instance().NOTIFICATION_ERROR_FATAL,
+            "Unknown error."
         );
     }
 }
@@ -214,7 +204,7 @@ void MultiSwitchProgramSession::shutdown(){
     internal_stop_program();
 }
 void MultiSwitchProgramSession::startup(size_t switch_count){
-    std::unique_lock<std::mutex> lg(m_lock);
+    SpinLockGuard lg(m_lock);
     m_option.instance().update_active_consoles(switch_count);
     for (Listener* listener : m_listeners){
         listener->redraw_options();

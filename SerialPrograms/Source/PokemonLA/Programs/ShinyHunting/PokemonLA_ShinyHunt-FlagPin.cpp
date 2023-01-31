@@ -4,6 +4,7 @@
  *
  */
 
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/Tools/StatsTracking.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
@@ -30,7 +31,8 @@ ShinyHuntFlagPin_Descriptor::ShinyHuntFlagPin_Descriptor()
         STRING_POKEMON + " LA", "Shiny Hunt - Flag Pin",
         "ComputerControl/blob/master/Wiki/Programs/PokemonLA/ShinyHunt-FlagPin.md",
         "Repeatedly travel to a flag pin to shiny hunt " + STRING_POKEMON + " around it.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -84,7 +86,7 @@ ShinyHuntFlagPin::ShinyHuntFlagPin()
         &SHINY_DETECTED_ENROUTE.NOTIFICATIONS,
         &SHINY_DETECTED_DESTINATION.NOTIFICATIONS,
         &NOTIFICATION_PROGRAM_FINISH,
-//        &NOTIFICATION_ERROR_RECOVERABLE,
+        &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
     })
     , m_advanced_options(
@@ -193,8 +195,10 @@ void ShinyHuntFlagPin::program(SingleSwitchProgramEnvironment& env, BotBaseConte
         send_program_status_notification(env, NOTIFICATION_STATUS);
         try{
             run_iteration(env, context);
-        }catch (OperationFailedException&){
+        }catch (OperationFailedException& e){
             stats.errors++;
+            e.send_notification(env, NOTIFICATION_ERROR_RECOVERABLE);
+
             pbf_press_button(context, BUTTON_HOME, 20, GameSettings::instance().GAME_TO_HOME_DELAY);
             reset_game_from_home(env, env.console, context, ConsoleSettings::instance().TOLERATE_SYSTEM_UPDATE_MENU_FAST);
         }

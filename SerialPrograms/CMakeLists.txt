@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.16.0)
 project(SerialPrograms)
 
 #enable c++ 20
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #produce clang tidy file
@@ -39,7 +39,6 @@ file(GLOB MAIN_SOURCES
     ../3rdParty/QtWavFile/WavFile.h
     ../3rdParty/TesseractPA/TesseractPA.cpp
     ../3rdParty/TesseractPA/TesseractPA.h
-    ../3rdParty/nlohmann/json.hpp
     ../3rdParty/qdarkstyle/dark/darkstyle.qrc
     ../ClientSource/Connection/BotBase.cpp
     ../ClientSource/Connection/BotBase.h
@@ -281,6 +280,14 @@ file(GLOB MAIN_SOURCES
     Source/CommonFramework/ControllerDevices/SerialPortWidget.h
     Source/CommonFramework/CrashDump.cpp
     Source/CommonFramework/CrashDump.h
+    Source/CommonFramework/Exceptions/FatalProgramException.cpp
+    Source/CommonFramework/Exceptions/FatalProgramException.h
+    Source/CommonFramework/Exceptions/OperationFailedException.cpp
+    Source/CommonFramework/Exceptions/OperationFailedException.h
+    Source/CommonFramework/Exceptions/ProgramFinishedException.cpp
+    Source/CommonFramework/Exceptions/ProgramFinishedException.h
+    Source/CommonFramework/Exceptions/ScreenshotException.cpp
+    Source/CommonFramework/Exceptions/ScreenshotException.h
     Source/CommonFramework/Environment/Environment.cpp
     Source/CommonFramework/Environment/Environment.h
     Source/CommonFramework/Environment/Environment_Linux.h
@@ -523,8 +530,9 @@ file(GLOB MAIN_SOURCES
     Source/CommonFramework/VideoPipeline/CameraOption.cpp
     Source/CommonFramework/VideoPipeline/CameraOption.h
     Source/CommonFramework/VideoPipeline/CameraSession.h
-    Source/CommonFramework/VideoPipeline/ThreadUtilizationStats.cpp
-    Source/CommonFramework/VideoPipeline/ThreadUtilizationStats.h
+    Source/CommonFramework/VideoPipeline/Stats/CpuUtilizationStats.h
+    Source/CommonFramework/VideoPipeline/Stats/ThreadUtilizationStats.cpp
+    Source/CommonFramework/VideoPipeline/Stats/ThreadUtilizationStats.h
     Source/CommonFramework/VideoPipeline/UI/CameraSelectorWidget.cpp
     Source/CommonFramework/VideoPipeline/UI/CameraSelectorWidget.h
     Source/CommonFramework/VideoPipeline/UI/VideoDisplayWidget.cpp
@@ -575,6 +583,12 @@ file(GLOB MAIN_SOURCES
     Source/Integrations/ProgramTracker.h
     Source/Integrations/SleepyDiscordRunner.cpp
     Source/Integrations/SleepyDiscordRunner.h
+    Source/Integrations/DppIntegration/DppClient.cpp
+    Source/Integrations/DppIntegration/DppClient.h
+    Source/Integrations/DppIntegration/DppUtility.cpp
+    Source/Integrations/DppIntegration/DppUtility.h
+    Source/Integrations/DppIntegration/DppCommandHandler.cpp
+    Source/Integrations/DppIntegration/DppCommandHandler.h
     Source/Kernels/AbsFFT/Kernels_AbsFFT.cpp
     Source/Kernels/AbsFFT/Kernels_AbsFFT.h
     Source/Kernels/AbsFFT/Kernels_AbsFFT_Arch.h
@@ -818,6 +832,8 @@ file(GLOB MAIN_SOURCES
     Source/Pokemon/Inference/Pokemon_IVCheckerReader.h
     Source/Pokemon/Inference/Pokemon_NameReader.cpp
     Source/Pokemon/Inference/Pokemon_NameReader.h
+    Source/Pokemon/Inference/Pokemon_NatureReader.cpp
+    Source/Pokemon/Inference/Pokemon_NatureReader.h
     Source/Pokemon/Inference/Pokemon_PokeballNameReader.cpp
     Source/Pokemon/Inference/Pokemon_PokeballNameReader.h
     Source/Pokemon/Inference/Pokemon_TrainIVCheckerOCR.cpp
@@ -833,11 +849,15 @@ file(GLOB MAIN_SOURCES
     Source/Pokemon/Options/Pokemon_NameSelectOption.h
     Source/Pokemon/Options/Pokemon_NameSelectWidget.cpp
     Source/Pokemon/Options/Pokemon_NameSelectWidget.h
+    Source/Pokemon/Options/Pokemon_StatsResetFilter.cpp
+    Source/Pokemon/Options/Pokemon_StatsResetFilter.h
     Source/Pokemon/Pokemon_DataTypes.h
     Source/Pokemon/Pokemon_EncounterStats.cpp
     Source/Pokemon/Pokemon_EncounterStats.h
     Source/Pokemon/Pokemon_IVChecker.cpp
     Source/Pokemon/Pokemon_IVChecker.h
+    Source/Pokemon/Pokemon_NatureChecker.cpp
+    Source/Pokemon/Pokemon_NatureChecker.h
     Source/Pokemon/Pokemon_Notification.cpp
     Source/Pokemon/Pokemon_Notification.h
     Source/Pokemon/Pokemon_ShinySparkleSet.cpp
@@ -870,6 +890,8 @@ file(GLOB MAIN_SOURCES
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxDetector.h
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxGenderDetector.cpp
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxGenderDetector.h
+    Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxNatureDetector.cpp
+    Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxNatureDetector.h
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxShinyDetector.cpp
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxShinyDetector.h
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_IVCheckerReader.cpp
@@ -1218,10 +1240,14 @@ file(GLOB MAIN_SOURCES
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxEggDetector.h
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxGenderDetector.cpp
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxGenderDetector.h
+    Source/PokemonSV/Inference/Boxes/PokemonSV_BoxNatureDetector.cpp
+    Source/PokemonSV/Inference/Boxes/PokemonSV_BoxNatureDetector.h
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxShinyDetector.cpp
     Source/PokemonSV/Inference/Boxes/PokemonSV_BoxShinyDetector.h
     Source/PokemonSV/Inference/Boxes/PokemonSV_IVCheckerReader.cpp
     Source/PokemonSV/Inference/Boxes/PokemonSV_IVCheckerReader.h
+    Source/PokemonSV/Inference/Boxes/PokemonSV_StatsResetChecker.cpp
+    Source/PokemonSV/Inference/Boxes/PokemonSV_StatsResetChecker.h
     Source/PokemonSV/Inference/Dialogs/PokemonSV_DialogArrowDetector.cpp
     Source/PokemonSV/Inference/Dialogs/PokemonSV_DialogArrowDetector.h
     Source/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.cpp
@@ -1258,6 +1284,8 @@ file(GLOB MAIN_SOURCES
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraCodeReader.h
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraRaidSearchDetector.cpp
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraRaidSearchDetector.h
+    Source/PokemonSV/Inference/Tera/PokemonSV_TeraRewardsReader.cpp
+    Source/PokemonSV/Inference/Tera/PokemonSV_TeraRewardsReader.h
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraSilhouetteReader.cpp
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraSilhouetteReader.h
     Source/PokemonSV/Inference/Tera/PokemonSV_TeraTypeReader.cpp
@@ -1288,6 +1316,14 @@ file(GLOB MAIN_SOURCES
     Source/PokemonSV/Programs/Eggs/PokemonSV_EggHatcher.h
     Source/PokemonSV/Programs/Eggs/PokemonSV_EggRoutines.cpp
     Source/PokemonSV/Programs/Eggs/PokemonSV_EggRoutines.h
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_CodeEntry.cpp
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_CodeEntry.h
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_ClipboardFastCodeEntry.cpp
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_ClipboardFastCodeEntry.h
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_FastCodeEntry.cpp
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_FastCodeEntry.h
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_VideoFastCodeEntry.cpp
+    Source/PokemonSV/Programs/FastCodeEntry/PokemonSV_VideoFastCodeEntry.h
     Source/PokemonSV/Programs/General/PokemonSV_AuctionFarmer.cpp
     Source/PokemonSV/Programs/General/PokemonSV_AuctionFarmer.h
     Source/PokemonSV/Programs/General/PokemonSV_AutonomousBallThrower.cpp
@@ -1298,6 +1334,8 @@ file(GLOB MAIN_SOURCES
     Source/PokemonSV/Programs/General/PokemonSV_GimmighoulChestFarmer.h
     Source/PokemonSV/Programs/General/PokemonSV_GimmighoulRoamingFarmer.cpp
     Source/PokemonSV/Programs/General/PokemonSV_GimmighoulRoamingFarmer.h
+    Source/PokemonSV/Programs/General/PokemonSV_LPFarmer.cpp
+    Source/PokemonSV/Programs/General/PokemonSV_LPFarmer.h
     Source/PokemonSV/Programs/General/PokemonSV_MassPurchase.cpp
     Source/PokemonSV/Programs/General/PokemonSV_MassPurchase.h
     Source/PokemonSV/Programs/General/PokemonSV_MassRelease.cpp
@@ -1308,22 +1346,8 @@ file(GLOB MAIN_SOURCES
     Source/PokemonSV/Programs/Glitches/PokemonSV_CloneItems-1.0.1.h
     Source/PokemonSV/Programs/Glitches/PokemonSV_RideCloner-1.0.1.cpp
     Source/PokemonSV/Programs/Glitches/PokemonSV_RideCloner-1.0.1.h
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_AutoHost.cpp
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_AutoHost.h
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_AutoHostLobbyWaiter.cpp
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_AutoHostLobbyWaiter.h
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_ClipboardFastCodeEntry.cpp
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_ClipboardFastCodeEntry.h
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_FastCodeEntry.cpp
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_FastCodeEntry.h
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_JoinTracker.cpp
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_JoinTracker.h
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_VideoFastCodeEntry.cpp
-    Source/PokemonSV/Programs/Multiplayer/PokemonSV_VideoFastCodeEntry.h
     Source/PokemonSV/Programs/PokemonSV_BasicCatcher.cpp
     Source/PokemonSV/Programs/PokemonSV_BasicCatcher.h
-    Source/PokemonSV/Programs/PokemonSV_CodeEntry.cpp
-    Source/PokemonSV/Programs/PokemonSV_CodeEntry.h
     Source/PokemonSV/Programs/PokemonSV_ConnectToInternet.cpp
     Source/PokemonSV/Programs/PokemonSV_ConnectToInternet.h
     Source/PokemonSV/Programs/PokemonSV_GameEntry.cpp
@@ -1334,6 +1358,14 @@ file(GLOB MAIN_SOURCES
     Source/PokemonSV/Programs/PokemonSV_SaveGame.h
     Source/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichRoutines.cpp
     Source/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichRoutines.h
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_AutoHost.cpp
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_AutoHost.h
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_AutoHostLobbyWaiter.cpp
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_AutoHostLobbyWaiter.h
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_AutoHostTools.cpp
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_AutoHostTools.h
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_JoinTracker.cpp
+    Source/PokemonSV/Programs/TeraRaids/PokemonSV_JoinTracker.h
     Source/PokemonSV/Programs/TeraRaids/PokemonSV_TeraBattler.cpp
     Source/PokemonSV/Programs/TeraRaids/PokemonSV_TeraBattler.h
     Source/PokemonSV/Programs/TeraRaids/PokemonSV_TeraMultiFarmer.cpp
@@ -1348,6 +1380,7 @@ file(GLOB MAIN_SOURCES
     Source/PokemonSV/Programs/Trading/PokemonSV_TradeRoutines.h
     Source/PokemonSV/Resources/PokemonSV_AuctionItemNames.cpp
     Source/PokemonSV/Resources/PokemonSV_AuctionItemNames.h
+    Source/PokemonSV/Resources/PokemonSV_AutoHostOptions.h
     Source/PokemonSV/Resources/PokemonSV_ItemSprites.cpp
     Source/PokemonSV/Resources/PokemonSV_ItemSprites.h
     Source/PokemonSV/Resources/PokemonSV_PokemonSprites.cpp
@@ -1392,6 +1425,8 @@ file(GLOB MAIN_SOURCES
     Source/PokemonSwSh/Inference/Dens/PokemonSwSh_RaidLobbyReader.h
     Source/PokemonSwSh/Inference/PokemonSwSh_BoxGenderDetector.cpp
     Source/PokemonSwSh/Inference/PokemonSwSh_BoxGenderDetector.h
+    Source/PokemonSwSh/Inference/PokemonSwSh_BoxNatureDetector.cpp
+    Source/PokemonSwSh/Inference/PokemonSwSh_BoxNatureDetector.h
     Source/PokemonSwSh/Inference/PokemonSwSh_BoxShinySymbolDetector.cpp
     Source/PokemonSwSh/Inference/PokemonSwSh_BoxShinySymbolDetector.h
     Source/PokemonSwSh/Inference/PokemonSwSh_DialogBoxDetector.cpp
@@ -1788,8 +1823,20 @@ if (MSVC)
         MAP_IMPORTED_CONFIG_RELWITHDEBINFO  RELEASE
         MAP_IMPORTED_CONFIG_MINSIZEREL      RELEASE
     )
-    target_link_libraries(SerialPrograms tesseractPA.lib Sleepy.lib OpenCV_lib)
-    target_compile_definitions(SerialPrograms PRIVATE PA_TESSERACT PA_SLEEPY _CRT_SECURE_NO_WARNINGS)
+
+    add_library(dpp_lib IMPORTED UNKNOWN)
+    set_target_properties(dpp_lib PROPERTIES
+        IMPORTED_LOCATION_RELEASE ../3rdPartyBinaries/dpp.lib
+        IMPORTED_LOCATION_DEBUG ../3rdPartyBinaries/dppd.lib)
+    set_target_properties(dpp_lib PROPERTIES
+        MAP_IMPORTED_CONFIG_DEBUG           DEBUG
+        MAP_IMPORTED_CONFIG_RELEASE         RELEASE
+        MAP_IMPORTED_CONFIG_RELWITHDEBINFO  RELEASE
+        MAP_IMPORTED_CONFIG_MINSIZEREL      RELEASE
+    )
+
+    target_link_libraries(SerialPrograms tesseractPA.lib OpenCV_lib Sleepy.lib dpp_lib)
+    target_compile_definitions(SerialPrograms PRIVATE PA_TESSERACT PA_SLEEPY PA_DPP _CRT_SECURE_NO_WARNINGS)
 
     target_compile_options(SerialPrograms PRIVATE /FAs /FaAssembly/ /MP /W4 /WX /utf-8)
     target_compile_options(SerialPrograms PRIVATE /wd5054)  # Deprecated enum arithemtic

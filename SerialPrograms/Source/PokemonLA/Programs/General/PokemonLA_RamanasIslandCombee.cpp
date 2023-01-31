@@ -6,7 +6,7 @@
 
 #include <array>
 #include <sstream>
-#include "Common/Cpp/PrettyPrint.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -19,7 +19,6 @@
 #include "PokemonLA/Inference/Battles/PokemonLA_BattleMenuDetector.h"
 #include "PokemonLA/Inference/PokemonLA_BlackOutDetector.h"
 #include "PokemonLA/Inference/PokemonLA_OverworldDetector.h"
-#include "PokemonLA/Inference/PokemonLA_StatusInfoScreenDetector.h"
 #include "PokemonLA/Inference/Sounds/PokemonLA_ShinySoundDetector.h"
 #include "PokemonLA/Programs/PokemonLA_MountChange.h"
 #include "PokemonLA/Programs/PokemonLA_GameEntry.h"
@@ -40,7 +39,8 @@ RamanasCombeeFinder_Descriptor::RamanasCombeeFinder_Descriptor()
         STRING_POKEMON + " LA", "Ramanas Combee Finder",
         "ComputerControl/blob/master/Wiki/Programs/PokemonLA/RamanasCombeeFinder.md",
         "Check Ramanas Island Tree until a Combee is found",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -92,6 +92,7 @@ RamanasCombeeFinder:: RamanasCombeeFinder()
         &NOTIFICATION_STATUS,
         &SHINY_DETECTED_ENROUTE.NOTIFICATIONS,
         &NOTIFICATION_PROGRAM_FINISH,
+        &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
     })
     , SAVE_DEBUG_VIDEO(
@@ -254,7 +255,7 @@ void RamanasCombeeFinder::run_iteration(SingleSwitchProgramEnvironment& env, Bot
             break;
         }
         if (c >= 5){
-            throw OperationFailedException(env.console, "Failed to switch to Pokemon selection after 5 attempts.");
+            throw OperationFailedException(env.console, "Failed to switch to Pokemon selection after 5 attempts.", true);
         }
         env.console.log("Not on Pokemon selection. Attempting to switch to it...", COLOR_ORANGE);
         pbf_press_button(context, BUTTON_X, 20, 230);
@@ -289,7 +290,7 @@ void RamanasCombeeFinder::run_iteration(SingleSwitchProgramEnvironment& env, Bot
     shiny_detector.throw_if_no_sound();
     if (ret == 0){
         on_shiny_sound(env, env.console, context, SHINY_DETECTED_ENROUTE, shiny_coefficient);
-    } else if (ret == 1){
+    }else if (ret == 1){
         env.log("Character blacks out");
         // black out.
         stats.blackouts++;
@@ -299,7 +300,7 @@ void RamanasCombeeFinder::run_iteration(SingleSwitchProgramEnvironment& env, Bot
             pbf_press_button(context, BUTTON_CAPTURE, 2 * TICKS_PER_SECOND, 2 * TICKS_PER_SECOND);
             context.wait_for_all_requests();
         }
-        throw OperationFailedException(env.console, "Black out.");
+        throw OperationFailedException(env.console, "Black out.", true);
     }
 
     from_professor_return_to_jubilife(env, env.console, context);
@@ -316,8 +317,10 @@ void RamanasCombeeFinder::program(SingleSwitchProgramEnvironment& env, BotBaseCo
         send_program_status_notification(env, NOTIFICATION_STATUS);
         try{
             run_iteration(env, context);
-        }catch (OperationFailedException&){
+        }catch (OperationFailedException& e){
             stats.errors++;
+            e.send_notification(env, NOTIFICATION_ERROR_RECOVERABLE);
+
             pbf_press_button(context, BUTTON_HOME, 20, GameSettings::instance().GAME_TO_HOME_DELAY);
             reset_game_from_home(env, env.console, context, ConsoleSettings::instance().TOLERATE_SYSTEM_UPDATE_MENU_FAST);
         }

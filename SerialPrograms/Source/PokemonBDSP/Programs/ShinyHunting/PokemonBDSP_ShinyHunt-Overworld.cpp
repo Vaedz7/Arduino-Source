@@ -4,15 +4,12 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
-#include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/NintendoSwitch_Settings.h"
 #include "PokemonSwSh/ShinyHuntTracker.h"
 #include "PokemonBDSP/PokemonBDSP_Settings.h"
-#include "PokemonBDSP/Inference/Battles/PokemonBDSP_StartBattleDetector.h"
-#include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP/Inference/ShinyDetection/PokemonBDSP_ShinyEncounterDetector.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_EncounterHandler.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
@@ -29,7 +26,8 @@ ShinyHuntOverworld_Descriptor::ShinyHuntOverworld_Descriptor()
         STRING_POKEMON + " BDSP", "Shiny Hunt - Overworld",
         "ComputerControl/blob/master/Wiki/Programs/PokemonBDSP/ShinyHunt-Overworld.md",
         "Shiny hunt overworld " + STRING_POKEMON + ".",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -149,10 +147,11 @@ void ShinyHuntOverworld::program(SingleSwitchProgramEnvironment& env, BotBaseCon
             }
             lead_tracker.report_result(result_own.shiny_type);
 
-        } catch(OperationFailedException& e){
+        }catch (OperationFailedException& e){
             if (!RESET_GAME_WHEN_ERROR){
-                throw e;
+                throw;
             }
+            e.send_notification(env, NOTIFICATION_ERROR_RECOVERABLE);
 
             stats.add_error();
             pbf_press_button(context, BUTTON_HOME, 10, GameSettings::instance().GAME_TO_HOME_DELAY);

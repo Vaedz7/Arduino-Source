@@ -4,12 +4,12 @@
  *
  */
 
-#include "Common/Cpp/Json/JsonObject.h"
+#include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/Containers/FixedLimitVector.tpp"
 #include "Common/Cpp/Concurrency/AsyncDispatcher.h"
 #include "ClientSource/Connection/BotBase.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
-#include "CommonFramework/VideoPipeline/ThreadUtilizationStats.h"
+#include "CommonFramework/VideoPipeline/Stats/ThreadUtilizationStats.h"
 #include "NintendoSwitch_MultiSwitchProgram.h"
 #include "Framework/NintendoSwitch_MultiSwitchProgramOption.h"
 
@@ -71,7 +71,7 @@ MultiSwitchProgramDescriptor::MultiSwitchProgramDescriptor(
     std::string doc_link,
     std::string description,
     FeedbackType feedback,
-    bool allow_commands_while_running,
+    AllowCommandsWhenRunning allow_commands_while_running,
     PABotBaseLevel min_pabotbase_level,
     size_t min_switches,
     size_t max_switches,
@@ -86,7 +86,7 @@ MultiSwitchProgramDescriptor::MultiSwitchProgramDescriptor(
     )
     , m_feedback(feedback)
     , m_min_pabotbase_level(min_pabotbase_level)
-    , m_allow_commands_while_running(allow_commands_while_running)
+    , m_allow_commands_while_running(allow_commands_while_running == AllowCommandsWhenRunning::ENABLE_COMMANDS)
     , m_min_switches(min_switches)
     , m_max_switches(max_switches)
     , m_default_switches(default_switches)
@@ -98,12 +98,17 @@ std::unique_ptr<PanelInstance> MultiSwitchProgramDescriptor::make_panel() const{
 
 
 
-
+MultiSwitchProgramInstance::~MultiSwitchProgramInstance() = default;
 MultiSwitchProgramInstance::MultiSwitchProgramInstance(
     const std::vector<std::string>& error_notification_tags
 )
     : m_options(LockWhileRunning::UNLOCKED)
-    , NOTIFICATION_PROGRAM_FINISH("Program Finished", true, true)
+    , NOTIFICATION_PROGRAM_FINISH(
+        "Program Finished",
+        true, true,
+        ImageAttachmentMode::JPG,
+        {"Notifs"}
+    )
     , NOTIFICATION_ERROR_RECOVERABLE(
         "Program Error (Recoverable)",
         true, false,
@@ -113,6 +118,7 @@ MultiSwitchProgramInstance::MultiSwitchProgramInstance(
     , NOTIFICATION_ERROR_FATAL(
         "Program Error (Fatal)",
         true, true,
+        ImageAttachmentMode::PNG,
         error_notification_tags
     )
 {}

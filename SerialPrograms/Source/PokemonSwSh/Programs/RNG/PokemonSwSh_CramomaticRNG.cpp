@@ -10,16 +10,17 @@
 
 #include <algorithm>
 #include <set>
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/ProgramFinishedException.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTools/SolidColorTest.h"
+#include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/Tools/StatsTracking.h"
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/NintendoSwitch_Settings.h"
-#include "Pokemon/Pokemon_Notification.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "Pokemon/Inference/Pokemon_PokeballNameReader.h"
 #include "Pokemon/Inference/Pokemon_NameReader.h"
@@ -45,7 +46,8 @@ CramomaticRNG_Descriptor::CramomaticRNG_Descriptor()
         STRING_POKEMON + " SwSh", "Cram-o-matic RNG",
         "ComputerControl/blob/master/Wiki/Programs/PokemonSwSh/CramomaticRNG.md",
         "Perform RNG manipulation to get rare balls from the Cram-o-matic.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -303,7 +305,7 @@ void CramomaticRNG::choose_apricorn(SingleSwitchProgramEnvironment& env, BotBase
 
     int ret = wait_until(env.console, context, Milliseconds(5000), { bag_arrow_detector });
     if (ret < 0) {
-        throw OperationFailedException(env.console, "Could not detect bag.");
+        throw OperationFailedException(env.console, "Could not detect bag.", true);
     }
 
     // select the apricorn(s)
@@ -488,13 +490,14 @@ void CramomaticRNG::program(SingleSwitchProgramEnvironment& env, BotBaseContext&
         try {
             choose_apricorn(env, context, sport);
         }
-        catch (OperationFailedException&) {
+        catch (OperationFailedException& e) {
             stats.errors++;
             env.update_stats();
+            e.send_notification(env, NOTIFICATION_ERROR_RECOVERABLE);
 
             apricorn_selection_errors++;
             if (apricorn_selection_errors >= 3) {
-                throw OperationFailedException(env.console, "Could not detect the bag three times on a row.");
+                throw OperationFailedException(env.console, "Could not detect the bag three times on a row.", true);
             }
             VideoSnapshot screen = env.console.video().snapshot();
             send_program_recoverable_error_notification(env, NOTIFICATION_ERROR_RECOVERABLE, "Could not detect the bag.", screen);
@@ -520,7 +523,7 @@ void CramomaticRNG::program(SingleSwitchProgramEnvironment& env, BotBaseContext&
 
         //  Out of apricorns.
         if (!result.first || num_apricorn_one <= 4 || (sport_wanted && num_apricorn_two <= 2)){
-            throw ProgramFinishedException();
+            throw ProgramFinishedException(env.console, "Out of apricorns.");
         }
 
 

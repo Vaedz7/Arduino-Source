@@ -9,6 +9,7 @@
 #include <time.h>
 #include <set>
 #include <iostream>
+#include <thread>
 #include <sys/types.h>
 #include <unistd.h>
 #include <sched.h>
@@ -106,6 +107,24 @@ WallClock::duration thread_cpu_time(const ThreadHandle& handle){
 
 
 
+std::chrono::microseconds SystemCpuTime::operator-(const SystemCpuTime& x) const{
+    return std::chrono::microseconds(0);
+}
+SystemCpuTime SystemCpuTime::now(){
+    SystemCpuTime ret;
+    ret.set_to_now();
+    return ret;
+}
+size_t SystemCpuTime::vcores(){
+    static size_t cores = read_cores();
+    return cores;
+}
+void SystemCpuTime::set_to_now(){
+    //  TODO
+}
+size_t SystemCpuTime::read_cores(){
+    return std::thread::hardware_concurrency();
+}
 
 
 

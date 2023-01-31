@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Options/LanguageOCROption.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
@@ -15,13 +15,13 @@
 #include "PokemonSV/PokemonSV_Settings.h"
 #include "PokemonSV/Inference/Battles/PokemonSV_BattleMenuDetector.h"
 #include "PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h"
+#include "PokemonSV/Inference/Boxes/PokemonSV_StatsResetChecker.h"
 #include "PokemonSV/Inference/Boxes/PokemonSV_BoxDetection.h"
 #include "PokemonSV/Inference/Boxes/PokemonSV_IVCheckerReader.h"
 #include "PokemonSV/Programs/PokemonSV_GameEntry.h"
 #include "PokemonSV/Programs/PokemonSV_Navigation.h"
 #include "PokemonSV/Programs/PokemonSV_BasicCatcher.h"
 #include "PokemonSV/Programs/Boxes/PokemonSV_BoxRoutines.h"
-#include "PokemonSV/Programs/Eggs/PokemonSV_EggRoutines.h"
 #include "PokemonSV_StatsReset.h"
 
 namespace PokemonAutomation{
@@ -36,7 +36,8 @@ StatsReset_Descriptor::StatsReset_Descriptor()
         STRING_POKEMON + " SV", "Stats Reset",
         "ComputerControl/blob/master/Wiki/Programs/PokemonSV/StatsReset.md",
         "Repeatedly catch the Treasures of Ruin until you get the stats you want.",
-        FeedbackType::REQUIRED, true,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -75,13 +76,13 @@ StatsReset::StatsReset()
         LockWhileRunning::LOCKED,
         Target::TreasuresOfRuin
     )
-    ,LANGUAGE(
+    , LANGUAGE(
         "<b>Game Language:</b><br>This field is required so we can read IVs.",
         IV_READER().languages(),
         LockWhileRunning::LOCKED,
-        false
+        true
     )
-    ,BALL_SELECT(
+    , BALL_SELECT(
         "<b>Ball Select:</b>",
         LockWhileRunning::UNLOCKED,
         "poke-ball"
@@ -112,14 +113,14 @@ void StatsReset::program(SingleSwitchProgramEnvironment& env, BotBaseContext& co
 
     //Autosave must be off, settings like Tera farmer.
     bool stats_matched = false;
-    while (!stats_matched) {
+    while (!stats_matched){
         AdvanceDialogWatcher advance_detector(COLOR_YELLOW);
         pbf_press_button(context, BUTTON_A, 10, 50);
         int retD = wait_until(env.console, context, Milliseconds(4000), { advance_detector });
-        if (retD < 0) {
+        if (retD < 0){
             env.log("Dialog detected.");
         }
-        switch (TARGET) {
+        switch (TARGET){
         case Target::TreasuresOfRuin:
             //~30 seconds to start battle?
             pbf_mash_button(context, BUTTON_A, 3250);
@@ -142,10 +143,11 @@ void StatsReset::program(SingleSwitchProgramEnvironment& env, BotBaseContext& co
         if(ret != 0) {
             stats.errors++;
             env.update_stats();
-            throw OperationFailedException(env.console, "Failed to enter battle. Are you facing the Pokemon or in a menu?");
+            throw OperationFailedException(env.console, "Failed to enter battle. Are you facing the Pokemon or in a menu?", true);
         }
         bool battle_ended = false;
-        while (!battle_ended) {
+        bool goldfish_loop = false;
+        while (!battle_ended){
             //Navigate to correct ball and repeatedly throw it until caught
             pbf_press_button(context, BUTTON_X, 20, 100);
             context.wait_for_all_requests();
@@ -160,34 +162,53 @@ void StatsReset::program(SingleSwitchProgramEnvironment& env, BotBaseContext& co
                 );
                 break;
             }
-            if (quantity < 0) {
+            if (quantity < 0){
                 stats.errors++;
                 env.update_stats();
                 env.console.log("Unable to read ball quantity.", COLOR_RED);
             }
-            //Throw ball/Wild pokemon's turn/wait for catch animation
+            //Throw ball
             pbf_mash_button(context, BUTTON_A, 150);
-            stats.balls++;
-            env.update_stats();
-            //pbf_wait(context, 4000);
-            pbf_mash_button(context, BUTTON_B, 1000);
-            context.wait_for_all_requests();
 
-            AdvanceDialogWatcher summary(COLOR_MAGENTA);
-            int ret2 = wait_until(
+            //Check for battle menu - if found after a second then assume caught in a goldfish bounce loop
+            ret = wait_until(
                 env.console, context,
-                std::chrono::seconds(25),
-                { summary, battle_menu }
+                std::chrono::seconds(4),
+                { battle_menu }
             );
-            if (ret2 == 0) {
-                env.log("Dialog detected, assuming caught.");
-                stats.catches++;
-                env.update_stats();
-                battle_ended = true;
+            if (ret == 0) {
+                env.console.log("Battle menu detected, assuming caught in a loop. Resetting.", COLOR_RED);
+                battle_ended = true; //Leave the loop
+                goldfish_loop = true;
             }
-            //ret2 == 1 battle menu, continue
+            else {
+                //Wild pokemon's turn/wait for catch animation
+                //pbf_mash_button(context, BUTTON_A, 150);
+                stats.balls++;
+                env.update_stats();
+                //pbf_wait(context, 4000);
+                pbf_mash_button(context, BUTTON_B, 900);
+                context.wait_for_all_requests();
+
+                AdvanceDialogWatcher summary(COLOR_MAGENTA);
+                int ret2 = wait_until(
+                    env.console, context,
+                    std::chrono::seconds(25),
+                    { summary, battle_menu }
+                );
+                if (ret2 == 0) {
+                    env.log("Dialog detected, assuming caught.");
+                    stats.catches++;
+                    env.update_stats();
+                    battle_ended = true;
+                }
+                //ret2 == 1 battle menu, continue
+            }
         }
-        if (battle_ended) {
+        if (goldfish_loop) {
+            battle_ended = false; //Set this back and use the reset below
+        }
+        if (battle_ended){
             //Close all the dex entry and caught menus
             pbf_mash_button(context, BUTTON_B, 100);
             context.wait_for_all_requests();
@@ -199,19 +220,11 @@ void StatsReset::program(SingleSwitchProgramEnvironment& env, BotBaseContext& co
 
             //Check the IVs of the newly caught Pokemon - *must be on IV panel*
             EggHatchAction action = EggHatchAction::Keep;
-            check_baby_info(env.program_info(), env.console, context, LANGUAGE, FILTERS, action);
+            //This is an edited version of check_baby_info
+            check_stats_reset_info(env.console, context, LANGUAGE, FILTERS, action);
 
-            switch (action) {
+            switch (action){
             case EggHatchAction::StopProgram:
-                //Correct stats found, end program
-                stats_matched = true;
-                env.console.log("Program stop requested...");
-                send_program_status_notification(
-                    env, NOTIFICATION_PROGRAM_FINISH,
-                    "Match found!"
-                );
-                break;
-            case EggHatchAction::Keep:
                 //Correct stats found, end program
                 stats_matched = true;
                 env.console.log("Match found!");
@@ -235,11 +248,10 @@ void StatsReset::program(SingleSwitchProgramEnvironment& env, BotBaseContext& co
                 env.console.log("Invalid state.");
                 stats.errors++;
                 env.update_stats();
-                throw OperationFailedException(env.console, "Invalid state.");
-                break;
+                throw OperationFailedException(env.console, "Invalid state.", true);
             }
         }
-        if (!battle_ended) {
+        if (!battle_ended){
             //Reset game
             stats.resets++;
             env.update_stats();

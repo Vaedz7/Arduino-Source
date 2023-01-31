@@ -6,8 +6,8 @@
 
 #include <sstream>
 #include "Common/Cpp/PrettyPrint.h"
-#include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Globals.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "CommonFramework/Notifications/ProgramInfo.h"
@@ -257,7 +257,7 @@ void determine_shiny_status(
 
 void detect_shiny_battle(
     ProgramEnvironment& env,
-    ConsoleHandle& console, CancellableScope& context,
+    ConsoleHandle& console, CancellableScope& scope,
     DoublesShinyDetection& wild_result,
     ShinyDetectionResult& your_result,
     EventNotificationOption& settings,
@@ -290,7 +290,7 @@ void detect_shiny_battle(
         callbacks.emplace_back(*shiny_sound_detector);
     }
     int result = wait_until(
-        console, context, timeout, callbacks
+        console, scope, timeout, callbacks
     );
     if (result < 0){
         console.log("ShinyDetector: Battle menu not found after timeout.", COLOR_RED);

@@ -5,8 +5,8 @@
  */
 
 #include <set>
-#include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Language.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -56,7 +56,8 @@ GiftBerryReset_Descriptor::GiftBerryReset_Descriptor()
         STRING_POKEMON + " BDSP", "Gift Berry Reset",
         "ComputerControl/blob/master/Wiki/Programs/PokemonBDSP/GiftBerryReset.md",
         "Reset the game in front of the NPC that gives rare berries in Pastoria City until a desired berry is received.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -130,7 +131,7 @@ void GiftBerryReset::program(SingleSwitchProgramEnvironment& env, BotBaseContext
         // dialog_detector.make_overlays(set);
         VideoSnapshot screen = env.console.video().snapshot();
         if (!dialog_detector.detect(screen)){
-            throw OperationFailedException(env.console, "No npc dialog box found when reading berry name");
+            throw OperationFailedException(env.console, "No npc dialog box found when reading berry name", true);
         }
 
         ImageFloatBox dialog_box(0.218, 0.835, 0.657, 0.12);
@@ -140,7 +141,7 @@ void GiftBerryReset::program(SingleSwitchProgramEnvironment& env, BotBaseContext
             OCR::BLACK_TEXT_FILTERS()
         );
         if (result.results.empty()){
-            throw OperationFailedException(env.console, "No berry name found in dialog box");
+            throw OperationFailedException(env.console, "No berry name found in dialog box", true);
         }
         bool found_berry = false;
         for (const auto& r: result.results){
@@ -163,8 +164,7 @@ void GiftBerryReset::program(SingleSwitchProgramEnvironment& env, BotBaseContext
         // Reset game:
         pbf_press_button(context, BUTTON_HOME, 10, GameSettings::instance().GAME_TO_HOME_DELAY);
         if (!reset_game_from_home(env, env.console, context, ConsoleSettings::instance().TOLERATE_SYSTEM_UPDATE_MENU_FAST)){
-            throw OperationFailedException(env.console, "Error resetting game");
-            break;
+            throw OperationFailedException(env.console, "Error resetting game", true);
         }
     }
 

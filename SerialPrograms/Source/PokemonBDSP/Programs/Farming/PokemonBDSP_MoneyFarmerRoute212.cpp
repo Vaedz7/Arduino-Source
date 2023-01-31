@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Tools/StatsTracking.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
@@ -13,7 +13,7 @@
 #include "PokemonBDSP/PokemonBDSP_Settings.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GlobalRoomHeal.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_VSSeekerReaction.h"
-#include "PokemonBDSP/Inference/Battles/PokemonBDSP_StartBattleDetector.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_EndBattleDetector.h"
 #include "PokemonBDSP_MoneyFarmerRoute212.h"
@@ -30,7 +30,8 @@ MoneyFarmerRoute212_Descriptor::MoneyFarmerRoute212_Descriptor()
         STRING_POKEMON + " BDSP", "Money Farmer (Route 212)",
         "ComputerControl/blob/master/Wiki/Programs/PokemonBDSP/MoneyFarmerRoute212.md",
         "Farm money by using VS Seeker to rebattle the rich couple on Route 212.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -154,7 +155,7 @@ bool MoneyFarmerRoute212::battle(SingleSwitchProgramEnvironment& env, BotBaseCon
                 }
             }
             if (slot == 4){
-                throw OperationFailedException(env.console, "Ran out of PP in a battle.");
+                throw OperationFailedException(env.console, "Ran out of PP in a battle.", true);
             }
 
             for (uint8_t move_slot = 0; move_slot < slot; move_slot++){
@@ -187,11 +188,11 @@ bool MoneyFarmerRoute212::battle(SingleSwitchProgramEnvironment& env, BotBaseCon
 
         default:
             stats.m_errors++;
-            throw OperationFailedException(env.console, "Timed out after 30 seconds.");
+            throw OperationFailedException(env.console, "Timed out after 30 seconds.", true);
         }
     }
 
-    throw OperationFailedException(env.console, "No progress detected after 5 battle menus. Are you out of PP?");
+    throw OperationFailedException(env.console, "No progress detected after 5 battle menus. Are you out of PP?", true);
 }
 
 

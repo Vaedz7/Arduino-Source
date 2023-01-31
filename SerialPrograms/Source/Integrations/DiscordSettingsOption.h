@@ -25,15 +25,6 @@ public:
     StringOption user_id;
     StringOption message;
 };
-class DiscordMessageSettingsOptionUI : public BatchWidget{
-public:
-    DiscordMessageSettingsOptionUI(QWidget& parent, DiscordMessageSettingsOption& value);
-};
-inline ConfigWidget* DiscordMessageSettingsOption::make_QtWidget(QWidget& parent){
-    return new DiscordMessageSettingsOptionUI(parent, *this);
-}
-
-
 
 
 
@@ -43,7 +34,6 @@ inline ConfigWidget* DiscordMessageSettingsOption::make_QtWidget(QWidget& parent
 class DiscordSettingsOption : public BatchOption{
 public:
     DiscordSettingsOption();
-//    virtual void load_json(const JsonValueRef& json) override;
 
     DiscordMessageSettingsOption message;
     DiscordWebhookSettingsOption webhooks;

@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -159,7 +159,7 @@ bool OverworldTrigger::find_encounter(ConsoleHandle& console, BotBaseContext& co
             }
         );
         if (result < 0){
-            throw OperationFailedException(console, "Battle not detected after Sweet Scent for 30 seconds.");
+            throw OperationFailedException(console, "Battle not detected after Sweet Scent for 30 seconds.", true);
         }
     }
 

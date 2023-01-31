@@ -7,16 +7,18 @@
 #include <cmath>
 #include <algorithm>
 #include <sstream>
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
+#include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "CommonFramework/Notifications/ProgramInfo.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "PokemonSV/Inference/Boxes/PokemonSV_BoxDetection.h"
+#include "PokemonSV/Inference/Boxes/PokemonSV_IVCheckerReader.h"
 #include "PokemonSV_BoxRoutines.h"
 
 //#include <iostream>
@@ -28,46 +30,98 @@ namespace NintendoSwitch{
 namespace PokemonSV{
 
 
-
-bool change_stats_view_to_judge(
-    const ProgramInfo& info, ConsoleHandle& console, BotBaseContext& context,
+bool change_view_to_stats_or_judge(
+    ConsoleHandle& console, BotBaseContext& context,
     bool throw_exception
 ){
     ImageFloatBox name_bar(0.66, 0.08, 0.52, 0.04);
     OverlayBoxScope name_bar_overlay(console.overlay(), name_bar);
-#if 1
     for (size_t attempts = 0;; attempts++){
-        if (attempts == 10){
-            if (throw_exception){
-                dump_image_and_throw_recoverable_exception(
-                    info, console, "ChangePokemonView",
-                    "check_baby_info: Unable to change Pokemon view after 10 tries."
-                );
+        if (throw_exception){
+            if (attempts == 10){
+                throw OperationFailedException(console, "Unable to change Pokemon view after 10 tries.", true);
             }
-            return false;
+        }else{
+            if (attempts == 3){
+                return false;
+            }
         }
 
         context.wait_for_all_requests();
         VideoSnapshot screen = console.video().snapshot();
         ImageStats stats = image_stats(extract_box_reference(screen, name_bar));
-        if (stats.stddev.sum() > 100){
+//        cout << stats.stddev << endl;
+        if (stats.stddev.sum() > 50){
             break;
         }
 
         console.log("Unable to detect stats menu. Attempting to correct.", COLOR_RED);
 
-        //  Alternate one and two + presses. If IV checker is enabled, we should
-        //  land on the IV checker. Otherwise, it will land us back to nothing.
-        //  Then the next press will be a single which will put us on the stats
-        //  with no IV checker.
-        pbf_press_button(context, BUTTON_PLUS, 20, 230);
-        if (attempts % 2 == 0){
-            pbf_press_button(context, BUTTON_PLUS, 20, 230);
-        }
+//        //  Alternate one and two + presses. If IV checker is enabled, we should
+//        //  land on the IV checker. Otherwise, it will land us back to nothing.
+//        //  Then the next press will be a single which will put us on the stats
+//        //  with no IV checker.
+        pbf_press_button(context, BUTTON_PLUS, 20, 105);
+//        if (attempts % 2 == 0){
+//            pbf_press_button(context, BUTTON_PLUS, 20, 230);
+//        }
     }
     return true;
-#endif
 }
+
+
+void change_view_to_judge(
+    ConsoleHandle& console, BotBaseContext& context,
+    Language language
+){
+    if (language == Language::None){
+        throw InternalProgramError(
+            &console.logger(), PA_CURRENT_FUNCTION,
+            "change_view_to_judge() called with no language."
+        );
+    }
+
+    ImageFloatBox name_bar(0.66, 0.08, 0.52, 0.04);
+    IVCheckerReaderScope iv_checker(console, language);
+    OverlayBoxScope name_bar_overlay(console.overlay(), name_bar);
+    for (size_t attempts = 0;; attempts++){
+        if (attempts == 5){
+            throw OperationFailedException(console, "Unable to change Pokemon view to judge after 10 tries. Have you unlocked it?", true);
+        }
+
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        ImageStats stats = image_stats(extract_box_reference(screen, name_bar));
+//        cout << stats.stddev << endl;
+
+        //  Check if we're even on a stats screen.
+        if (stats.stddev.sum() < 50){
+            console.log("Unable to detect stats menu. Attempting to correct.", COLOR_RED);
+            pbf_press_button(context, BUTTON_PLUS, 20, 105);
+            continue;
+        }
+
+        //  See if we're on the judge screen.
+        IVCheckerReader::Results ivs = iv_checker.read(console, screen);
+
+        size_t detected = 0;
+        if (ivs.hp      != IVCheckerValue::UnableToDetect) detected++;
+        if (ivs.attack  != IVCheckerValue::UnableToDetect) detected++;
+        if (ivs.defense != IVCheckerValue::UnableToDetect) detected++;
+        if (ivs.spatk   != IVCheckerValue::UnableToDetect) detected++;
+        if (ivs.spdef   != IVCheckerValue::UnableToDetect) detected++;
+        if (ivs.speed   != IVCheckerValue::UnableToDetect) detected++;
+
+        //  If less than 4 of the IVs are read, assume we're not on the judge screen.
+        if (detected < 4){
+            pbf_press_button(context, BUTTON_PLUS, 20, 230);
+        }
+
+        break;
+    }
+}
+
+
 
 // Moving to left/right box is blind sequence. To prevent game dropping button inputs,
 // press the button longer.
@@ -335,9 +389,10 @@ uint8_t check_empty_slots_in_party(const ProgramInfo& info, ConsoleHandle& conso
 }
 
 void load_one_column_to_party(
-    const ProgramInfo& info, ConsoleHandle& console, BotBaseContext& context,
-    uint8_t column_index, bool has_clone_ride_pokemon)
-{
+    ProgramEnvironment& env, ConsoleHandle& console, BotBaseContext& context,
+    EventNotificationOption& notification,
+    uint8_t column_index, bool has_clone_ride_pokemon
+){
     context.wait_for_all_requests();
     console.log("Load column " + std::to_string(column_index) + " to party.");
     console.overlay().add_log("Load column " + std::to_string(column_index+1), COLOR_WHITE);
@@ -345,15 +400,17 @@ void load_one_column_to_party(
     size_t fail_count = 0;
     while (true){
         // Move cursor to the target column
-        move_box_cursor(info, console, context, BoxCursorLocation::SLOTS, has_clone_ride_pokemon ? 1 : 0, column_index);
-        hold_one_column(info, console, context);
+        move_box_cursor(env.program_info(), console, context, BoxCursorLocation::SLOTS, has_clone_ride_pokemon ? 1 : 0, column_index);
+        hold_one_column(env.program_info(), console, context);
         try{
             // Move the held column to party
-            move_box_cursor(info, console, context, BoxCursorLocation::PARTY, has_clone_ride_pokemon ? 2 : 1, 0);
-        }catch (OperationFailedException&){
+            move_box_cursor(env.program_info(), console, context, BoxCursorLocation::PARTY, has_clone_ride_pokemon ? 2 : 1, 0);
+        }catch (OperationFailedException& e){
+            e.send_notification(env, notification);
+
             if (++fail_count == 10){
                 dump_image_and_throw_recoverable_exception(
-                    info, console, "ConsecutiveColumnMoveFailure",
+                    env.program_info(), console, "ConsecutiveColumnMoveFailure",
                     "load_one_column_to_party(): consecutive failure of moving column around."
                 );
             }
@@ -361,21 +418,22 @@ void load_one_column_to_party(
             // Cannot move column to party. It could be that the game dropped the button A press that is expected to finish
             // the column selection.
             // We can press B to back out and try again.
-            cancel_held_pokemon(info, console, context);
+            cancel_held_pokemon(env.program_info(), console, context);
             continue;
         }
         break;
     }
 
     // Drop the column to party
-    drop_held_pokemon(info, console, context);
+    drop_held_pokemon(env.program_info(), console, context);
 
     context.wait_for_all_requests();
     console.log("Loaded column " + std::to_string(column_index) + " to party.");
 }
 
 void unload_one_column_from_party(
-    const ProgramInfo& info, ConsoleHandle& console, BotBaseContext& context,
+    ProgramEnvironment& env, ConsoleHandle& console, BotBaseContext& context,
+    EventNotificationOption& notification,
     uint8_t column_index, bool has_clone_ride_pokemon
 ){
     context.wait_for_all_requests();
@@ -385,16 +443,18 @@ void unload_one_column_from_party(
     size_t fail_count = 0;
     while (true){
         // Move cursor to party column
-        move_box_cursor(info, console, context, BoxCursorLocation::PARTY, has_clone_ride_pokemon ? 2 : 1, 0);
-        hold_one_column(info, console, context);
+        move_box_cursor(env.program_info(), console, context, BoxCursorLocation::PARTY, has_clone_ride_pokemon ? 2 : 1, 0);
+        hold_one_column(env.program_info(), console, context);
 
         try{
             // Move the held column to target
-            move_box_cursor(info, console, context, BoxCursorLocation::SLOTS, has_clone_ride_pokemon ? 1 : 0, column_index);
-        }catch (OperationFailedException&){
+            move_box_cursor(env.program_info(), console, context, BoxCursorLocation::SLOTS, has_clone_ride_pokemon ? 1 : 0, column_index);
+        }catch (OperationFailedException& e){
+            e.send_notification(env, notification);
+
             if (++fail_count == 10){
                 dump_image_and_throw_recoverable_exception(
-                    info, console, "ConsecutiveColumnMoveFailure",
+                    env.program_info(), console, "ConsecutiveColumnMoveFailure",
                     "unload_one_column_from_party(): consecutive failure of moving column around."
                 );
             }
@@ -402,13 +462,13 @@ void unload_one_column_from_party(
             // Cannot move column to party. It could be that the game dropped the button A press that is expected to finish
             // the column selection.
             // We can press B to back out and try again.
-            cancel_held_pokemon(info, console, context);
+            cancel_held_pokemon(env.program_info(), console, context);
             continue;
         }
         break;
     }
     // Drop the column
-    drop_held_pokemon(info, console, context);
+    drop_held_pokemon(env.program_info(), console, context);
 
     context.wait_for_all_requests();
     console.log("Unloaded party to column " + std::to_string(column_index) + ".");
@@ -442,9 +502,13 @@ void swap_two_box_slots(
     detector.make_overlays(overlay_set);
 
     detector.move_cursor(info, console, context, source_side, source_row, source_col);
-    SomethingInBoxSlotDetector exists(COLOR_BLUE);
-    if (exists.detect(console.video().snapshot()) == false){
-        dump_image_and_throw_recoverable_exception(info, console, "EmptySourceSwap", "Swapping an empty slot.");
+
+    {
+        const bool stop_on_exists = true;
+        SomethingInBoxSlotWatcher exists(COLOR_BLUE, stop_on_exists);
+        if (wait_until(console, context, std::chrono::seconds(3), {exists}) < 0){
+            dump_image_and_throw_recoverable_exception(info, console, "EmptySourceSwap", "Swapping an empty slot.");
+        }
     }
 
     press_y_to_hold_pokemon(info, console, context);

@@ -4,7 +4,7 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
@@ -15,7 +15,6 @@
 #include "PokemonBDSP/PokemonBDSP_Settings.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_BoxRelease.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameNavigation.h"
-#include "PokemonBDSP/Programs/Eggs/PokemonBDSP_EggRoutines.h"
 #include "PokemonBDSP_CloneItemsBoxCopy2.h"
 
 namespace PokemonAutomation{
@@ -31,7 +30,8 @@ CloneItemsBoxCopy2_Descriptor::CloneItemsBoxCopy2_Descriptor()
         "ComputerControl/blob/master/Wiki/Programs/PokemonBDSP/CloneItemsBoxCopy2.md",
         "With the menu glitch active, clone entire boxes of items at a time. "
         "<font color=\"red\">(The menu glitch can only be activated on version 1.1.0 - 1.1.3.)</font>",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -175,7 +175,7 @@ void CloneItemsBoxCopy2::program(SingleSwitchProgramEnvironment& env, BotBaseCon
         context.wait_for(std::chrono::milliseconds(500));
         if (!matcher.detect(env.console.video().snapshot())){
             stats.m_errors++;
-            throw OperationFailedException(env.console, "Failed to return to starting position. Something is wrong.");
+            throw OperationFailedException(env.console, "Failed to return to starting position. Something is wrong.", true);
         }
 
         stats.m_boxes++;

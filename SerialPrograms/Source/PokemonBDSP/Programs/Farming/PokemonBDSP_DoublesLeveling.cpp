@@ -4,14 +4,12 @@
  *
  */
 
-#include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/InferenceInfra/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonSwSh/ShinyHuntTracker.h"
-#include "PokemonBDSP/PokemonBDSP_Settings.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
-#include "PokemonBDSP/Inference/Battles/PokemonBDSP_StartBattleDetector.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_EndBattleDetector.h"
 #include "PokemonBDSP/Inference/ShinyDetection/PokemonBDSP_ShinyEncounterDetector.h"
@@ -29,7 +27,8 @@ DoublesLeveling_Descriptor::DoublesLeveling_Descriptor()
         STRING_POKEMON + " BDSP", "Double Battle Leveling",
         "ComputerControl/blob/master/Wiki/Programs/PokemonBDSP/DoublesLeveling.md",
         "Level up your party by spamming spread moves in a double battle with a partner that heals you forever.",
-        FeedbackType::REQUIRED, false,
+        FeedbackType::REQUIRED,
+        AllowCommandsWhenRunning::DISABLE_COMMANDS,
         PABotBaseLevel::PABOTBASE_12KB
     )
 {}
@@ -135,11 +134,11 @@ bool DoublesLeveling::battle(SingleSwitchProgramEnvironment& env, BotBaseContext
         default:
             env.log("Timed out.", COLOR_RED);
             stats.add_error();
-            throw OperationFailedException(env.console, "Timed out after 2 minutes.");
+            throw OperationFailedException(env.console, "Timed out after 2 minutes.", true);
         }
     }
 
-    throw OperationFailedException(env.console, "No progress detected after 5 battle menus. Are you out of PP?");
+    throw OperationFailedException(env.console, "No progress detected after 5 battle menus. Are you out of PP?", true);
 }
 
 
