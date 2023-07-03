@@ -91,6 +91,8 @@ private:
     BooleanCheckBoxOption HAS_CLONE_RIDE_POKEMON;
 
     IntegerEnumDropdownOption KEEP_BOX_LOCATION;
+    
+    BooleanCheckBoxOption FINISH_BOX;
 
     Pokemon::EggHatchFilterTable FILTERS;
 
@@ -117,6 +119,8 @@ private:
     // When we find a pokemon to keep, we don't want the game to be reset if we haven't placed a save to protect the
     // kept the pokemon. This flag is used to signal when we are in this "don't reset" stage.
     bool m_in_critical_to_save_stage = false;
+    // Finish extras in box
+    bool m_finish_full_box = false;
 };
 
 

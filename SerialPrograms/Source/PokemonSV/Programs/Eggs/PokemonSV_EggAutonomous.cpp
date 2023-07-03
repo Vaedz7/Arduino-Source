@@ -125,6 +125,11 @@ EggAutonomous::EggAutonomous()
         LockWhileRunning::UNLOCKED,
         1
     )
+    , FINISH_BOX(
+        "<b>Finish Current Box on Target:</b><br>"
+        "Finish hatching the full box to prevent any leftover eggs. Any extra " + STRING_POKEMON + " that match applied filter will be kept.",
+        LockWhileRunning::UNLOCKED,
+        true)
     , SAVE_DEBUG_VIDEO(
         "<b>Save debug videos to Switch:</b><br>"
         "Set this on to save a Switch video everytime an error occurs. You can send the video to developers to help them debug later.",
@@ -161,6 +166,7 @@ EggAutonomous::EggAutonomous()
     PA_ADD_OPTION(MAX_KEEPERS);
     PA_ADD_OPTION(AUTO_SAVING);
     PA_ADD_OPTION(KEEP_BOX_LOCATION);
+    PA_ADD_OPTION(FINISH_BOX);
     PA_ADD_OPTION(FILTERS);
     PA_ADD_OPTION(HAS_CLONE_RIDE_POKEMON);
 
@@ -200,6 +206,7 @@ void EggAutonomous::program(SingleSwitchProgramEnvironment& env, BotBaseContext&
     while(true){
         m_saved_after_fetched_eggs = false;
         m_in_critical_to_save_stage = false;
+        m_finish_full_box = false;
 
         // Do one iteration of the outmost loop of egg auto:
         // - Start at Aera Zero flying spot
@@ -481,7 +488,12 @@ void EggAutonomous::hatch_eggs_full_routine(SingleSwitchProgramEnvironment& env,
 
         leave_box_system_to_overworld(env.program_info(), env.console, context);
 
-        if (next_egg_column == 6){ // no more eggs to hatch
+        if (next_egg_column == 6){// no more eggs to hatch
+            if (m_finish_full_box == true) {
+                env.log("Full Box Finished. Program Stop Requested...");
+                env.console.overlay().add_log("Box Finished. Stopping Program.", COLOR_WHITE);
+                throw ProgramFinishedException();
+            }
             break; // break egg batch loop. This is the only place to break out of the loop
         }
         next_egg_column++;
@@ -535,10 +547,31 @@ void EggAutonomous::process_one_baby(SingleSwitchProgramEnvironment& env, BotBas
 
     switch (action){
         case EggHatchAction::StopProgram:
-            env.log("Program stop requested...");
-            env.console.overlay().add_log("Request program stop", COLOR_WHITE);
-            send_keep_notification();
-            throw ProgramFinishedException();
+            if (FINISH_BOX == true) {
+                env.log("Program stop overridden (Finishing Box)...");
+                env.console.overlay().add_log("Target Found. Finishing Box.", COLOR_WHITE);
+                send_keep_notification();
+                m_finish_full_box = true;
+                m_in_critical_to_save_stage = true;
+                
+                if (move_pokemon_to_keep(env, context, party_row) == false) {
+                    env.log("Keep Box Full. Cannot Finish Box.");
+                    env.console.overlay().add_log("No box space", COLOR_RED);
+                    throw ProgramFinishedException();
+                }
+                
+                if (m_num_kept >= MAX_KEEPERS){
+                    env.log("Max keepers reached. Cannot Finish Box.");
+                    env.console.overlay().add_log("Max Keepers reached", COLOR_WHITE);
+                    throw ProgramFinishedException();
+                }
+            }
+            else {
+                env.log("Program stop requested...");
+                env.console.overlay().add_log("Request program stop", COLOR_WHITE);
+                send_keep_notification();
+                throw ProgramFinishedException();
+            }
         case EggHatchAction::Keep:
             m_in_critical_to_save_stage = true;
             env.log("Moving Pokemon to keep box...", COLOR_BLUE);
